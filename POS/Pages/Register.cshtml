@@ -1,0 +1,335 @@
+@page
+@model POS.Pages.RegisterModel
+@{
+    ViewData["Title"] = "Register";
+    Layout = "_TemplateLayout";
+}
+
+<div id="templateContent" class="vh-100 d-flex justify-content-center align-items-center">
+    <!-- Default register form that will be replaced if a template exists -->
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="text-center">Register</h3>
+                    </div>
+                    <div class="card-body">
+                        <form method="post">
+                            <div asp-validation-summary="All" class="text-danger"></div>
+                            
+                            <div class="form-group mb-3">
+                                <label asp-for="Input.FullName"></label>
+                                <input asp-for="Input.FullName" class="form-control" />
+                                <span asp-validation-for="Input.FullName" class="text-danger"></span>
+                            </div>
+                            
+                            <div class="form-group mb-3">
+                                <label asp-for="Input.UserName"></label>
+                                <input asp-for="Input.UserName" class="form-control" />
+                                <span asp-validation-for="Input.UserName" class="text-danger"></span>
+                            </div>
+                            
+                            <div class="form-group mb-3">
+                                <label asp-for="Input.Email"></label>
+                                <input asp-for="Input.Email" class="form-control" />
+                                <span asp-validation-for="Input.Email" class="text-danger"></span>
+                            </div>
+                            
+                            <div class="form-group mb-3">
+                                <label asp-for="Input.Password"></label>
+                                <input asp-for="Input.Password" class="form-control" type="password" />
+                                <span asp-validation-for="Input.Password" class="text-danger"></span>
+                            </div>
+                            
+                            <div class="form-group mb-3">
+                                <label asp-for="Input.ConfirmPassword"></label>
+                                <input asp-for="Input.ConfirmPassword" class="form-control" type="password" />
+                                <span asp-validation-for="Input.ConfirmPassword" class="text-danger"></span>
+                            </div>
+                            
+                            <div class="form-group mb-3">
+                                <div class="checkbox">
+                                    <label>
+                                        <input asp-for="Input.AgreeToTerms" />
+                                        @Html.DisplayNameFor(m => m.Input.AgreeToTerms)
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group mb-3">
+                                <button type="submit" class="btn btn-primary w-100">Register</button>
+                            </div>
+                            
+                            <div class="text-center">
+                                <a asp-page="/Login">Already have an account? Login here</a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Load the template when the page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            loadTemplate();
+        });
+
+        function loadTemplate() {
+            fetch('/api/templates/active?pageName=Register')
+                .then(response => response.json())
+                .then(data => {
+                    if (data && data.elements && data.elements.length > 0) {
+                        renderTemplate(data);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading template:', error);
+                });
+        }
+
+        function renderTemplate(template) {
+            const container = document.getElementById('templateContent');
+            
+            // Set background color if specified
+            if (template.backgroundColor) {
+                container.style.backgroundColor = template.backgroundColor;
+            }
+            
+            // Create a register form container
+            const formContainer = document.createElement('div');
+            formContainer.className = 'position-relative template-form-container';
+            formContainer.style.width = '100%';
+            formContainer.style.height = '100%';
+            
+            // Create the form element
+            const form = document.createElement('form');
+            form.action = '';
+            form.method = 'post';
+            
+            // Add CSRF token (required for ASP.NET Core forms)
+            const antiForgeryToken = document.querySelector('input[name="__RequestVerificationToken"]');
+            if (antiForgeryToken) {
+                const tokenInput = document.createElement('input');
+                tokenInput.type = 'hidden';
+                tokenInput.name = '__RequestVerificationToken';
+                tokenInput.value = antiForgeryToken.value;
+                form.appendChild(tokenInput);
+            }
+            
+            // Add validation summary
+            const validationSummary = document.createElement('div');
+            validationSummary.className = 'text-danger validation-summary-valid';
+            validationSummary.setAttribute('data-valmsg-summary', 'true');
+            validationSummary.innerHTML = '<ul><li style="display:none"></li></ul>';
+            form.appendChild(validationSummary);
+            
+            // Map elements to actual form controls
+            template.elements.forEach(element => {
+                const elementDiv = document.createElement('div');
+                elementDiv.className = 'position-absolute';
+                elementDiv.style.left = element.x + 'px';
+                elementDiv.style.top = element.y + 'px';
+                elementDiv.style.width = element.width + 'px';
+                elementDiv.style.height = element.height + 'px';
+                
+                if (element.type === 'InputField') {
+                    if (element.id === 'fullname-input') {
+                        const label = document.createElement('label');
+                        label.innerText = element.text;
+                        label.style.color = element.color;
+                        label.style.marginBottom = '5px';
+                        label.setAttribute('for', 'Input_FullName');
+                        elementDiv.appendChild(label);
+                        
+                        const input = document.createElement('input');
+                        input.type = 'text';
+                        input.className = 'form-control';
+                        input.id = 'Input_FullName';
+                        input.name = 'Input.FullName';
+                        input.required = true;
+                        elementDiv.appendChild(input);
+                        
+                        // Add validation span
+                        const validationSpan = document.createElement('span');
+                        validationSpan.className = 'text-danger field-validation-valid';
+                        validationSpan.setAttribute('data-valmsg-for', 'Input.FullName');
+                        validationSpan.setAttribute('data-valmsg-replace', 'true');
+                        elementDiv.appendChild(validationSpan);
+                    }
+                    else if (element.id === 'username-input') {
+                        const label = document.createElement('label');
+                        label.innerText = element.text;
+                        label.style.color = element.color;
+                        label.style.marginBottom = '5px';
+                        label.setAttribute('for', 'Input_UserName');
+                        elementDiv.appendChild(label);
+                        
+                        const input = document.createElement('input');
+                        input.type = 'text';
+                        input.className = 'form-control';
+                        input.id = 'Input_UserName';
+                        input.name = 'Input.UserName';
+                        input.required = true;
+                        elementDiv.appendChild(input);
+                        
+                        // Add validation span
+                        const validationSpan = document.createElement('span');
+                        validationSpan.className = 'text-danger field-validation-valid';
+                        validationSpan.setAttribute('data-valmsg-for', 'Input.UserName');
+                        validationSpan.setAttribute('data-valmsg-replace', 'true');
+                        elementDiv.appendChild(validationSpan);
+                    }
+                    else if (element.id === 'email-input') {
+                        const label = document.createElement('label');
+                        label.innerText = element.text;
+                        label.style.color = element.color;
+                        label.style.marginBottom = '5px';
+                        label.setAttribute('for', 'Input_Email');
+                        elementDiv.appendChild(label);
+                        
+                        const input = document.createElement('input');
+                        input.type = 'email';
+                        input.className = 'form-control';
+                        input.id = 'Input_Email';
+                        input.name = 'Input.Email';
+                        input.required = true;
+                        elementDiv.appendChild(input);
+                        
+                        // Add validation span
+                        const validationSpan = document.createElement('span');
+                        validationSpan.className = 'text-danger field-validation-valid';
+                        validationSpan.setAttribute('data-valmsg-for', 'Input.Email');
+                        validationSpan.setAttribute('data-valmsg-replace', 'true');
+                        elementDiv.appendChild(validationSpan);
+                    } 
+                    else if (element.id === 'password-input') {
+                        const label = document.createElement('label');
+                        label.innerText = element.text;
+                        label.style.color = element.color;
+                        label.style.marginBottom = '5px';
+                        label.setAttribute('for', 'Input_Password');
+                        elementDiv.appendChild(label);
+                        
+                        const input = document.createElement('input');
+                        input.type = 'password';
+                        input.className = 'form-control';
+                        input.id = 'Input_Password';
+                        input.name = 'Input.Password';
+                        input.required = true;
+                        elementDiv.appendChild(input);
+                        
+                        // Add validation span
+                        const validationSpan = document.createElement('span');
+                        validationSpan.className = 'text-danger field-validation-valid';
+                        validationSpan.setAttribute('data-valmsg-for', 'Input.Password');
+                        validationSpan.setAttribute('data-valmsg-replace', 'true');
+                        elementDiv.appendChild(validationSpan);
+                    }
+                    else if (element.id === 'confirm-password') {
+                        const label = document.createElement('label');
+                        label.innerText = element.text;
+                        label.style.color = element.color;
+                        label.style.marginBottom = '5px';
+                        label.setAttribute('for', 'Input_ConfirmPassword');
+                        elementDiv.appendChild(label);
+                        
+                        const input = document.createElement('input');
+                        input.type = 'password';
+                        input.className = 'form-control';
+                        input.id = 'Input_ConfirmPassword';
+                        input.name = 'Input.ConfirmPassword';
+                        input.required = true;
+                        elementDiv.appendChild(input);
+                        
+                        // Add validation span
+                        const validationSpan = document.createElement('span');
+                        validationSpan.className = 'text-danger field-validation-valid';
+                        validationSpan.setAttribute('data-valmsg-for', 'Input.ConfirmPassword');
+                        validationSpan.setAttribute('data-valmsg-replace', 'true');
+                        elementDiv.appendChild(validationSpan);
+                    }
+                }
+                else if (element.type === 'Checkbox' && element.id === 'terms-checkbox') {
+                    const checkboxDiv = document.createElement('div');
+                    checkboxDiv.className = 'form-check';
+                    
+                    const input = document.createElement('input');
+                    input.type = 'checkbox';
+                    input.className = 'form-check-input';
+                    input.id = 'Input_AgreeToTerms';
+                    input.name = 'Input.AgreeToTerms';
+                    input.value = "true";
+                    input.required = true;
+                    checkboxDiv.appendChild(input);
+                    
+                    // Add hidden field to ensure false is sent when unchecked
+                    const hiddenInput = document.createElement('input');
+                    hiddenInput.type = 'hidden';
+                    hiddenInput.name = 'Input.AgreeToTerms';
+                    hiddenInput.value = 'false';
+                    checkboxDiv.appendChild(hiddenInput);
+                    
+                    const label = document.createElement('label');
+                    label.innerText = element.text || 'I agree to the Terms and Conditions';
+                    label.className = 'form-check-label';
+                    label.style.color = element.color;
+                    label.setAttribute('for', 'Input_AgreeToTerms');
+                    checkboxDiv.appendChild(label);
+                    
+                    // Add validation span
+                    const validationSpan = document.createElement('span');
+                    validationSpan.className = 'text-danger field-validation-valid';
+                    validationSpan.setAttribute('data-valmsg-for', 'Input.AgreeToTerms');
+                    validationSpan.setAttribute('data-valmsg-replace', 'true');
+                    checkboxDiv.appendChild(validationSpan);
+                    
+                    elementDiv.appendChild(checkboxDiv);
+                }
+                else if (element.type === 'Button' && element.id === 'register-button') {
+                    const button = document.createElement('button');
+                    button.type = 'submit';
+                    button.className = 'btn';
+                    button.style.backgroundColor = element.color;
+                    button.style.color = '#fff';
+                    button.innerText = element.text;
+                    button.style.width = '100%';
+                    button.style.height = '100%';
+                    elementDiv.appendChild(button);
+                } 
+                else if (element.type === 'Label' && element.id === 'login-link') {
+                    const link = document.createElement('a');
+                    link.href = '/Login';
+                    link.innerText = element.text;
+                    link.style.color = element.color;
+                    link.style.textDecoration = 'underline';
+                    elementDiv.appendChild(link);
+                }
+                
+                // Apply any additional styles
+                if (element.additionalStyles) {
+                    elementDiv.style.cssText += element.additionalStyles;
+                }
+                
+                form.appendChild(elementDiv);
+            });
+            
+            formContainer.appendChild(form);
+            
+            // Clear and update the container
+            container.innerHTML = '';
+            container.appendChild(formContainer);
+            
+            // Initialize validation
+            if (typeof $.validator !== 'undefined') {
+                $('form').validate();
+            }
+        }
+    </script>
+
+    <partial name="_ValidationScriptsPartial" />
+} 

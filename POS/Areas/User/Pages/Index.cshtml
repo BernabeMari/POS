@@ -1,0 +1,595 @@
+@page
+@model POS.Areas.User.Pages.IndexModel
+@{
+    ViewData["Title"] = "User Dashboard";
+    Layout = "_NoHeaderFooterLayout";
+}
+
+@* Add hidden antiforgery token to the page *@
+@Html.AntiForgeryToken()
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-12 mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4 class="mb-0">Welcome, @User.Identity.Name!</h4>
+                <form class="form-inline" asp-area="" asp-page="/Logout" method="post">
+                    <button type="submit" class="btn btn-danger">Logout</button>
+                </form>
+            </div>
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">User Dashboard</h4>
+                </div>
+                <div class="card-body">
+                    <p>This is your personalized dashboard.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div id="pageContent" class="col-12">
+            <!-- Content will be loaded dynamically based on the active template -->
+            <div class="text-center my-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2">Loading your dashboard...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal for displaying image descriptions -->
+<div class="modal fade" id="imageDescriptionModal" tabindex="-1" aria-labelledby="imageDescriptionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="imageDescriptionModalLabel">Image Details</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="imageDescriptionContent">
+                <!-- Image and description will be inserted here -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Product Details Modal -->
+<div class="modal fade" id="productDetailsModal" tabindex="-1" aria-labelledby="productDetailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="productDetailsModalLabel">Product Details</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center mb-3">
+                    <img id="modalProductImage" src="" alt="Product Image" class="img-fluid" style="max-height: 200px;">
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Name:</strong> <span id="modalProductName"></span></p>
+                        <p><strong>Price:</strong> $<span id="modalProductPrice"></span></p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Stock:</strong> <span id="modalProductStock"></span></p>
+                    </div>
+                </div>
+                <p><strong>Description:</strong></p>
+                <p id="modalProductDescription"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Function to show product details in modal
+        function showProductDetails(productId, imageUrl, productName) {
+            console.log('Opening product details:', { productId, imageUrl, productName });
+            
+            // Set known values immediately
+            document.getElementById('modalProductImage').src = imageUrl || '';
+            document.getElementById('modalProductName').textContent = productName || 'Product';
+            
+            // Reset other fields while loading
+            document.getElementById('modalProductPrice').textContent = '...';
+            document.getElementById('modalProductStock').textContent = '...';
+            document.getElementById('modalProductDescription').textContent = 'Loading...';
+            
+            // Show the modal
+            try {
+                const modal = new bootstrap.Modal(document.getElementById('productDetailsModal'));
+                modal.show();
+            } catch (error) {
+                console.error('Error showing modal:', error);
+                alert('Could not display product details. Please try again.');
+                return;
+            }
+            
+            // Check if productId is valid
+            if (!productId) {
+                console.warn('No product ID provided');
+                document.getElementById('modalProductDescription').textContent = 'Product details not available';
+                return;
+            }
+            
+            // Fetch additional product details
+            fetch(`/api/products/${productId}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Failed to load product details: ${response.status} ${response.statusText}`);
+                    }
+                    return response.json();
+                })
+                .then(product => {
+                    console.log('Product details received:', product);
+                    // Update modal with fetched details
+                    document.getElementById('modalProductPrice').textContent = product.price ? product.price.toFixed(2) : 'N/A';
+                    document.getElementById('modalProductStock').textContent = product.stock !== undefined ? product.stock : 'N/A';
+                    document.getElementById('modalProductDescription').textContent = product.description || 'No description available';
+                })
+                .catch(error => {
+                    console.error('Error loading product details:', error);
+                    document.getElementById('modalProductDescription').textContent = 'Error loading product details. Please try again.';
+                });
+        }
+        
+        // This would be replaced with actual API calls to get the template
+        document.addEventListener('DOMContentLoaded', function() {
+            fetch('/api/templates/active?pageName=Dashboard')
+                .then(response => response.json())
+                .then(data => {
+                    if (data && data.elements) {
+                        renderTemplate(data.elements, data.backgroundColor);
+                    } else {
+                        showDefaultDashboard();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading template:', error);
+                    showDefaultDashboard();
+                });
+        });
+        
+        function renderTemplate(elements, backgroundColor) {
+            const container = document.getElementById('pageContent');
+            container.innerHTML = '';
+            
+            // Create a relative positioned container for absolute positioned elements
+            const designCanvas = document.createElement('div');
+            designCanvas.className = 'position-relative';
+            designCanvas.style.height = '600px';
+            
+            // Apply background color if provided
+            if (backgroundColor) {
+                designCanvas.style.backgroundColor = backgroundColor;
+            }
+            
+            container.appendChild(designCanvas);
+            
+            elements.forEach(element => {
+                const elementDiv = document.createElement('div');
+                elementDiv.className = 'position-absolute';
+                elementDiv.style.left = element.x + 'px';
+                elementDiv.style.top = element.y + 'px';
+                elementDiv.style.width = element.width + 'px';
+                elementDiv.style.height = element.height + 'px';
+                elementDiv.style.color = element.color;
+                
+                if (element.type === 'Button') {
+                    elementDiv.className += ' btn';
+                    elementDiv.style.backgroundColor = element.color;
+                    elementDiv.style.color = '#fff';
+                    elementDiv.style.display = 'flex';
+                    elementDiv.style.justifyContent = 'center';
+                    elementDiv.style.alignItems = 'center';
+                    elementDiv.innerText = element.text;
+                    
+                    // Add logout functionality to logout button
+                    if (element.id === 'logout-button') {
+                        elementDiv.addEventListener('click', function() {
+                            window.location.href = '/Identity/Account/Logout';
+                        });
+                    }
+                } else if (element.type === 'Label') {
+                    elementDiv.innerText = element.text;
+                    if (element.id.includes('link')) {
+                        elementDiv.style.color = '#007bff';
+                        elementDiv.style.textDecoration = 'underline';
+                        elementDiv.style.cursor = 'pointer';
+                    }
+                } else if (element.type === 'ContentPanel') {
+                    elementDiv.style.backgroundColor = '#f8f9fa';
+                    elementDiv.style.padding = '20px';
+                    elementDiv.style.border = '1px solid #ddd';
+                    elementDiv.style.borderRadius = '4px';
+                    elementDiv.innerHTML = '<h5>Dashboard Content</h5><p>This is your personalized dashboard content.</p>';
+                } else if (element.type === 'Image') {
+                    // Check if this Image element has multiple images
+                    if (element.images && element.images.length > 0) {
+                        // Create image gallery container
+                        elementDiv.style.overflow = 'auto';
+                        elementDiv.style.padding = '10px';
+                        elementDiv.style.backgroundColor = '#f8f9fa';
+                        elementDiv.style.border = '1px solid #ddd';
+                        elementDiv.style.borderRadius = '4px';
+                        
+                        // Create row for images
+                        const row = document.createElement('div');
+                        row.className = 'row';
+                        elementDiv.appendChild(row);
+                        
+                        // Add images
+                        element.images.forEach(img => {
+                            const imgCol = document.createElement('div');
+                            imgCol.className = 'col-md-4 mb-3';
+                            
+                            const imgCard = document.createElement('div');
+                            imgCard.className = 'card h-100';
+                            
+                            const imgElement = document.createElement('img');
+                            imgElement.src = img.base64Data;
+                            imgElement.className = 'card-img-top';
+                            imgElement.style.height = '150px';
+                            imgElement.style.objectFit = 'cover';
+                            imgElement.style.cursor = 'pointer';
+                            
+                            // Add click event to show description
+                            imgElement.addEventListener('click', function() {
+                                // Always handle the click, regardless of productId or description
+                                if (img.productId) {
+                                    showProductDetails(img.productId, img.base64Data, img.description || 'Product');
+                                } else if (img.description) {
+                                    showImageDescription(img.description, img.base64Data);
+                                } else {
+                                    // Even with no description, show the image
+                                    showImageDescription('No description available', img.base64Data);
+                                }
+                            });
+                            
+                            const cardBody = document.createElement('div');
+                            cardBody.className = 'card-body';
+                            
+                            // Always add a visual indicator that images are clickable
+                            const infoIcon = document.createElement('div');
+                            infoIcon.className = 'text-primary text-center';
+                            
+                            if (img.productId) {
+                                infoIcon.innerHTML = '<small><i class="bi bi-info-circle"></i> View product details</small>';
+                            } else if (img.description) {
+                                infoIcon.innerHTML = '<small><i class="bi bi-info-circle"></i> View details</small>';
+                            } else {
+                                infoIcon.innerHTML = '<small><i class="bi bi-info-circle"></i> View image</small>';
+                            }
+                            
+                            cardBody.appendChild(infoIcon);
+                            
+                            imgCard.appendChild(imgElement);
+                            imgCard.appendChild(cardBody);
+                            imgCol.appendChild(imgCard);
+                            row.appendChild(imgCol);
+                        });
+                    } else if (element.imageUrl) {
+                        // Handle single image (legacy support)
+                        if (element.imageUrl.startsWith('data:image/')) {
+                            // Base64 image
+                            elementDiv.style.backgroundImage = `url(${element.imageUrl})`;
+                        } else {
+                            // Regular URL
+                            elementDiv.style.backgroundImage = `url(${element.imageUrl})`;
+                        }
+                        
+                        elementDiv.style.backgroundSize = 'cover';
+                        elementDiv.style.backgroundPosition = 'center';
+                        elementDiv.style.border = '1px solid #ddd';
+                        elementDiv.style.borderRadius = '4px';
+                        elementDiv.style.cursor = 'pointer'; // Always set cursor to pointer
+                        
+                        // Store the description as a data attribute
+                        elementDiv.dataset.description = element.imageDescription || '';
+                        
+                        // Make ALL images clickable - with or without productId
+                        elementDiv.addEventListener('click', function() {
+                            if (element.productId) {
+                                // If it has a product ID, show product details
+                                showProductDetails(element.productId, element.imageUrl, element.imageDescription || 'Product');
+                            } else if (element.imageDescription) {
+                                // If it has only a description, show image description
+                                showImageDescription(element.imageDescription, element.imageUrl);
+                            } else {
+                                // If it has neither, still show the image in a modal
+                                showImageDescription('No description available', element.imageUrl);
+                            }
+                        });
+                        
+                        // Visual indicator for clickable images
+                        const infoIcon = document.createElement('div');
+                        infoIcon.className = 'position-absolute';
+                        infoIcon.style.bottom = '5px';
+                        infoIcon.style.right = '5px';
+                        infoIcon.style.backgroundColor = 'rgba(0,0,0,0.5)';
+                        infoIcon.style.color = 'white';
+                        infoIcon.style.padding = '2px 6px';
+                        infoIcon.style.borderRadius = '3px';
+                        infoIcon.style.fontSize = '10px';
+                        
+                        if (element.productId) {
+                            infoIcon.innerHTML = '<i class="bi bi-info-circle"></i> View Product';
+                        } else {
+                            infoIcon.innerHTML = '<i class="bi bi-info-circle"></i> View Image';
+                        }
+                        
+                        elementDiv.appendChild(infoIcon);
+                    }
+                }
+                
+                // Apply any additional styles
+                if (element.additionalStyles) {
+                    elementDiv.style.cssText += element.additionalStyles;
+                }
+                
+                designCanvas.appendChild(elementDiv);
+            });
+        }
+        
+        // Show the image description in a modal
+        function showImageDescription(description, imageUrl) {
+            const modalBody = document.getElementById('imageDescriptionContent');
+            
+            // Clear previous content
+            modalBody.innerHTML = '';
+            
+            // If there's an image URL, display the image before the description
+            if (imageUrl) {
+                const imageElement = document.createElement('img');
+                imageElement.src = imageUrl;
+                imageElement.className = 'img-fluid mb-3';
+                imageElement.style.maxHeight = '300px';
+                imageElement.style.display = 'block';
+                imageElement.style.margin = '0 auto';
+                modalBody.appendChild(imageElement);
+            }
+            
+            // Add the description text
+            const descriptionElement = document.createElement('p');
+            descriptionElement.textContent = description;
+            modalBody.appendChild(descriptionElement);
+            
+            // Add Order button
+            const orderButtonContainer = document.createElement('div');
+            orderButtonContainer.className = 'text-center mt-3';
+            const orderButton = document.createElement('button');
+            orderButton.className = 'btn btn-primary';
+            orderButton.textContent = 'Order';
+            orderButton.onclick = function() {
+                placeOrder(description, imageUrl);
+            };
+            orderButtonContainer.appendChild(orderButton);
+            modalBody.appendChild(orderButtonContainer);
+            
+            // Initialize and show the modal
+            const modal = new bootstrap.Modal(document.getElementById('imageDescriptionModal'));
+            modal.show();
+        }
+        
+        // Function to place an order
+        function placeOrder(productName, imageUrl) {
+            // Show loading state
+            const orderButton = document.querySelector('#imageDescriptionContent button');
+            if (orderButton) {
+                orderButton.disabled = true;
+                orderButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...';
+            }
+            
+            // Create order data
+            const orderData = {
+                productName: productName,
+                productImageUrl: imageUrl,
+                quantity: 1,
+                notes: ''
+            };
+            
+            // Get the token - find it directly or use a default empty string
+            const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
+            
+            // Send order to server
+            fetch('/api/orders/create', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': token
+                },
+                body: JSON.stringify(orderData)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to place order');
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Close the modal
+                bootstrap.Modal.getInstance(document.getElementById('imageDescriptionModal')).hide();
+                
+                // Show success message with proper order ID handling
+                const orderId = data && data.orderId ? data.orderId : 'New';
+                showNotification('Order placed successfully! Your order #' + orderId + ' has been sent to our team.', 'success');
+                
+                // Log the complete response for debugging
+                console.log('Order creation response:', data);
+            })
+            .catch(error => {
+                console.error('Error placing order:', error);
+                showNotification('Error placing order. Please try again.', 'danger');
+                
+                // Reset button
+                if (orderButton) {
+                    orderButton.disabled = false;
+                    orderButton.textContent = 'Order';
+                }
+            });
+        }
+        
+        // Function to show notifications
+        function showNotification(message, type = 'info') {
+            // Create notification element
+            const notification = document.createElement('div');
+            notification.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+            notification.style.top = '20px';
+            notification.style.right = '20px';
+            notification.style.zIndex = '9999';
+            notification.style.maxWidth = '400px';
+            
+            notification.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            `;
+            
+            // Add to document
+            document.body.appendChild(notification);
+            
+            // Auto-dismiss after 5 seconds
+            setTimeout(() => {
+                notification.classList.remove('show');
+                setTimeout(() => notification.remove(), 300);
+            }, 5000);
+        }
+        
+        function showDefaultDashboard() {
+            const container = document.getElementById('pageContent');
+            container.innerHTML = `
+                <div class="alert alert-info">
+                    <h5>Welcome to your dashboard</h5>
+                    <p>This is the default dashboard layout since no custom template was found.</p>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Quick Actions</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <div class="card">
+                                    <div class="card-body text-center">
+                                        <i class="bi bi-person-circle fs-1"></i>
+                                        <h5 class="mt-2">Profile</h5>
+                                        <p>View and update your profile</p>
+                                        <button class="btn btn-sm btn-primary">Go to Profile</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <div class="card">
+                                    <div class="card-body text-center">
+                                        <i class="bi bi-gear-fill fs-1"></i>
+                                        <h5 class="mt-2">Settings</h5>
+                                        <p>Manage your account settings</p>
+                                        <button class="btn btn-sm btn-primary">Go to Settings</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <div class="card">
+                                    <div class="card-body text-center">
+                                        <i class="bi bi-box-arrow-right fs-1"></i>
+                                        <h5 class="mt-2">Logout</h5>
+                                        <p>Sign out of your account</p>
+                                        <button class="btn btn-sm btn-danger">Logout</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Handle form submission with AJAX
+        const orderForm = document.getElementById('orderForm');
+        if (orderForm) {
+            orderForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const productName = document.getElementById('productName').value;
+                const productImageUrl = document.getElementById('productImageUrl').value;
+                const quantity = document.getElementById('quantity').value;
+                const notes = document.getElementById('notes').value;
+                
+                // Create JSON data
+                const data = {
+                    productName: productName,
+                    productImageUrl: productImageUrl,
+                    quantity: parseInt(quantity),
+                    notes: notes
+                };
+                
+                // Disable the submit button while processing
+                const submitBtn = document.getElementById('submitOrder');
+                const originalText = submitBtn.textContent;
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...';
+                
+                // Get the anti-forgery token
+                const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+                
+                // Send the order
+                fetch('/api/orders/create', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'RequestVerificationToken': token
+                    },
+                    body: JSON.stringify(data)
+                })
+                .then(response => response.json())
+                .then(result => {
+                    console.log('Order result:', result);
+                    if (result.success) {
+                        // Show success message with the order ID
+                        const successAlert = document.getElementById('orderSuccess');
+                        successAlert.textContent = `Order placed successfully! Your order #${result.orderId} has been sent to our team.`;
+                        successAlert.classList.remove('d-none');
+                        
+                        // Clear the form
+                        document.getElementById('orderForm').reset();
+                        
+                        // Hide error message if visible
+                        document.getElementById('orderError').classList.add('d-none');
+                    } else {
+                        // Show error message
+                        const errorAlert = document.getElementById('orderError');
+                        errorAlert.textContent = result.message || 'Failed to place order. Please try again.';
+                        errorAlert.classList.remove('d-none');
+                        
+                        // Hide success message if visible
+                        document.getElementById('orderSuccess').classList.add('d-none');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    // Show error message
+                    const errorAlert = document.getElementById('orderError');
+                    errorAlert.textContent = 'An error occurred. Please try again later.';
+                    errorAlert.classList.remove('d-none');
+                    
+                    // Hide success message if visible
+                    document.getElementById('orderSuccess').classList.add('d-none');
+                })
+                .finally(() => {
+                    // Re-enable the submit button
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = originalText;
+                });
+            });
+        }
+    </script>
+} 

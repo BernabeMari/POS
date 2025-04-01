@@ -1,0 +1,316 @@
+@page
+@model POS.Pages.LoginModel
+@{
+    ViewData["Title"] = "Login";
+    Layout = "_TemplateLayout";
+}
+
+<div id="templateContent" class="vh-100 d-flex justify-content-center align-items-center">
+    <!-- Default login form (hidden by default) -->
+    <div id="defaultForm" class="container" style="display: none;">
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="text-center">Login</h3>
+                    </div>
+                    <div class="card-body">
+                        <form method="post">
+                            <div asp-validation-summary="All" class="text-danger"></div>
+                            
+                            <div class="form-group mb-3">
+                                <label asp-for="Input.Email"></label>
+                                <input asp-for="Input.Email" class="form-control" />
+                                <span asp-validation-for="Input.Email" class="text-danger"></span>
+                            </div>
+                            
+                            <div class="form-group mb-3">
+                                <label asp-for="Input.Password"></label>
+                                <input asp-for="Input.Password" class="form-control" type="password" />
+                                <span asp-validation-for="Input.Password" class="text-danger"></span>
+                            </div>
+                            
+                            <div class="form-group mb-3">
+                                <button type="submit" class="btn btn-primary w-100">Login</button>
+                            </div>
+                            
+                            <div class="text-center">
+                                <a asp-page="/Register">Don't have an account? Register here</a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading indicator (shown while template loads) -->
+    <div id="loadingIndicator" class="text-center">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="mt-2">Loading template...</p>
+    </div>
+</div>
+
+<!-- Hidden form for validation errors -->
+<div id="validationStore" style="display:none;">
+    @if (ViewData.ModelState.Any(m => m.Value.Errors.Count > 0))
+    {
+        <div>
+            @foreach (var error in ViewData.ModelState.Where(m => m.Value.Errors.Count > 0))
+            {
+                foreach (var errorMessage in error.Value.Errors)
+                {
+                    <input type="hidden" data-field="@error.Key" value="@errorMessage.ErrorMessage" />
+                }
+            }
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <script>
+        // Store validation messages in a more robust way
+        let validationMessages = {};
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            // Extract validation messages from hidden inputs
+            const validationInputs = document.querySelectorAll('#validationStore input[type="hidden"]');
+            validationMessages = {};
+            
+            validationInputs.forEach(input => {
+                const field = input.getAttribute('data-field') || '';
+                const message = input.value;
+                
+                if (!validationMessages[field]) {
+                    validationMessages[field] = [];
+                }
+                
+                validationMessages[field].push(message);
+            });
+            
+            // Get necessary elements - safely
+            const loadingEl = document.getElementById('loadingIndicator');
+            const defaultFormEl = document.getElementById('defaultForm');
+            
+            // Show loading indicator only if it exists
+            if (loadingEl) loadingEl.style.display = 'block';
+            if (defaultFormEl) defaultFormEl.style.display = 'none';
+            
+            loadTemplate();
+        });
+
+        function loadTemplate() {
+            fetch('/api/templates/active?pageName=Login')
+                .then(response => response.json())
+                .then(data => {
+                    if (data && data.elements && data.elements.length > 0) {
+                        renderTemplate(data);
+                    } else {
+                        // If no template exists, show the default form
+                        const loadingEl = document.getElementById('loadingIndicator');
+                        const defaultFormEl = document.getElementById('defaultForm');
+                        
+                        if (loadingEl) loadingEl.style.display = 'none';
+                        if (defaultFormEl) defaultFormEl.style.display = 'block';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading template:', error);
+                    // On error, show the default form
+                    const loadingEl = document.getElementById('loadingIndicator');
+                    const defaultFormEl = document.getElementById('defaultForm');
+                    
+                    if (loadingEl) loadingEl.style.display = 'none';
+                    if (defaultFormEl) defaultFormEl.style.display = 'block';
+                });
+        }
+
+        function renderTemplate(template) {
+            const container = document.getElementById('templateContent');
+            
+            // Make sure container exists before proceeding
+            if (!container) {
+                console.error('Template container not found');
+                return;
+            }
+            
+            // Set background color if specified
+            if (template.backgroundColor) {
+                container.style.backgroundColor = template.backgroundColor;
+            }
+            
+            // Create a login form container
+            const formContainer = document.createElement('div');
+            formContainer.className = 'position-relative template-form-container';
+            formContainer.style.width = '100%';
+            formContainer.style.height = '100%';
+            
+            // Create the form element
+            const form = document.createElement('form');
+            form.action = '';
+            form.method = 'post';
+            
+            // Add CSRF token (required for ASP.NET Core forms)
+            const antiForgeryToken = document.querySelector('input[name="__RequestVerificationToken"]');
+            if (antiForgeryToken) {
+                const tokenInput = document.createElement('input');
+                tokenInput.type = 'hidden';
+                tokenInput.name = '__RequestVerificationToken';
+                tokenInput.value = antiForgeryToken.value;
+                form.appendChild(tokenInput);
+            }
+            
+            // Add validation summary if we have errors
+            if (Object.keys(validationMessages).length > 0) {
+                const validationSummary = document.createElement('div');
+                validationSummary.className = 'text-danger validation-summary-errors alert alert-danger';
+                validationSummary.style.position = 'absolute';
+                validationSummary.style.top = '10px';
+                validationSummary.style.left = '50%';
+                validationSummary.style.transform = 'translateX(-50%)';
+                validationSummary.style.width = '80%';
+                validationSummary.style.zIndex = '100';
+                
+                const ulElement = document.createElement('ul');
+                
+                // First, check for general validation errors
+                if (validationMessages['']) {
+                    for (const message of validationMessages['']) {
+                        const liElement = document.createElement('li');
+                        liElement.textContent = message;
+                        ulElement.appendChild(liElement);
+                    }
+                }
+                
+                // Add the list to the summary if we have errors
+                if (ulElement.childNodes.length > 0) {
+                    validationSummary.appendChild(ulElement);
+                    formContainer.appendChild(validationSummary);
+                }
+            }
+            
+            // Map elements to actual form controls
+            template.elements.forEach(element => {
+                const elementDiv = document.createElement('div');
+                elementDiv.className = 'position-absolute';
+                elementDiv.style.left = element.x + 'px';
+                elementDiv.style.top = element.y + 'px';
+                elementDiv.style.width = element.width + 'px';
+                elementDiv.style.height = element.height + 'px';
+                
+                if (element.type === 'InputField') {
+                    if (element.id === 'email-input') {
+                        const label = document.createElement('label');
+                        label.innerText = element.text;
+                        label.style.color = element.color;
+                        label.style.marginBottom = '5px';
+                        label.setAttribute('for', 'Input_Email');
+                        elementDiv.appendChild(label);
+                        
+                        const input = document.createElement('input');
+                        input.type = 'email';
+                        input.className = 'form-control';
+                        input.id = 'Input_Email';
+                        input.name = 'Input.Email';
+                        
+                        // Restore previous value if available
+                        const modelEmail = '@(Html.Raw(Model.Input?.Email ?? ""))';
+                        if (modelEmail) {
+                            input.value = modelEmail;
+                        }
+                        
+                        input.required = true;
+                        elementDiv.appendChild(input);
+                        
+                        // Add validation span
+                        const validationSpan = document.createElement('span');
+                        validationSpan.className = 'text-danger field-validation-valid';
+                        validationSpan.setAttribute('data-valmsg-for', 'Input.Email');
+                        validationSpan.setAttribute('data-valmsg-replace', 'true');
+                        
+                        // Add field-specific validation errors
+                        if (validationMessages['Input.Email']) {
+                            validationSpan.textContent = validationMessages['Input.Email'][0];
+                        }
+                        
+                        elementDiv.appendChild(validationSpan);
+                    } 
+                    else if (element.id === 'password-input') {
+                        const label = document.createElement('label');
+                        label.innerText = element.text;
+                        label.style.color = element.color;
+                        label.style.marginBottom = '5px';
+                        label.setAttribute('for', 'Input_Password');
+                        elementDiv.appendChild(label);
+                        
+                        const input = document.createElement('input');
+                        input.type = 'password';
+                        input.className = 'form-control';
+                        input.id = 'Input_Password';
+                        input.name = 'Input.Password';
+                        input.required = true;
+                        elementDiv.appendChild(input);
+                        
+                        // Add validation span
+                        const validationSpan = document.createElement('span');
+                        validationSpan.className = 'text-danger field-validation-valid';
+                        validationSpan.setAttribute('data-valmsg-for', 'Input.Password');
+                        validationSpan.setAttribute('data-valmsg-replace', 'true');
+                        
+                        // Add field-specific validation errors
+                        if (validationMessages['Input.Password']) {
+                            validationSpan.textContent = validationMessages['Input.Password'][0];
+                        }
+                        
+                        elementDiv.appendChild(validationSpan);
+                    }
+                } 
+                else if (element.type === 'Button' && element.id === 'login-button') {
+                    const button = document.createElement('button');
+                    button.type = 'submit';
+                    button.className = 'btn';
+                    button.style.backgroundColor = element.color;
+                    button.style.color = '#fff';
+                    button.innerText = element.text;
+                    button.style.width = '100%';
+                    button.style.height = '100%';
+                    elementDiv.appendChild(button);
+                } 
+                else if (element.type === 'Label' && element.id === 'signup-link') {
+                    const link = document.createElement('a');
+                    link.href = '/Register';
+                    link.innerText = element.text;
+                    link.style.color = element.color;
+                    link.style.textDecoration = 'underline';
+                    elementDiv.appendChild(link);
+                }
+                
+                // Apply any additional styles
+                if (element.additionalStyles) {
+                    elementDiv.style.cssText += element.additionalStyles;
+                }
+                
+                form.appendChild(elementDiv);
+            });
+            
+            formContainer.appendChild(form);
+            
+            // Clear and update the container
+            container.innerHTML = '';
+            container.appendChild(formContainer);
+            
+            // Hide loading indicator (safely)
+            const loadingEl = document.getElementById('loadingIndicator');
+            if (loadingEl) loadingEl.style.display = 'none';
+            
+            // Initialize validation
+            if (typeof $ !== 'undefined' && typeof $.validator !== 'undefined') {
+                $('form').validate();
+            }
+        }
+    </script>
+
+    <partial name="_ValidationScriptsPartial" />
+} 

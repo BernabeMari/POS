@@ -1,0 +1,281 @@
+@page
+@model POS.Pages.DashboardModel
+@using POS.Models
+@{
+    ViewData["Title"] = "Dashboard";
+}
+
+<div class="container mt-4">
+    @Html.AntiForgeryToken()
+    
+    <!-- User Orders Section - Always visible -->
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h3 class="mb-0">My Orders</h3>
+            <button class="btn btn-outline-primary btn-sm" id="refreshOrders">
+                <i class="bi bi-arrow-clockwise"></i> Refresh
+            </button>
+        </div>
+        <div class="card-body p-0">
+            @if (Model.RecentOrders != null && Model.RecentOrders.Any())
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Product</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var order in Model.RecentOrders)
+                            {
+                                <tr class="order-row" data-order-id="@order.Id">
+                                    <td>@order.Id</td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            @if (!string.IsNullOrEmpty(order.ProductImageUrl))
+                                            {
+                                                <img src="@order.ProductImageUrl" alt="@order.ProductName"
+                                                     class="me-2" style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px;">
+                                            }
+                                            <div>
+                                                <span>@order.ProductName</span>
+                                                <small class="d-block text-muted">Qty: @order.Quantity</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        @{
+                                            string badgeClass = "bg-secondary";
+                                            
+                                            switch (order.Status)
+                                            {
+                                                case OrderStatus.Pending:
+                                                    badgeClass = "bg-warning text-dark";
+                                                    break;
+                                                case OrderStatus.OrderReceived:
+                                                    badgeClass = "bg-info text-dark";
+                                                    break;
+                                                case OrderStatus.OnGoing:
+                                                    badgeClass = "bg-primary";
+                                                    break;
+                                                case OrderStatus.Processing:
+                                                    badgeClass = "bg-primary";
+                                                    break;
+                                                case OrderStatus.ReadyToServe:
+                                                    badgeClass = "bg-info text-dark";
+                                                    break;
+                                                case OrderStatus.Completed:
+                                                    badgeClass = "bg-success";
+                                                    break;
+                                                case OrderStatus.Cancelled:
+                                                    badgeClass = "bg-danger";
+                                                    break;
+                                                default:
+                                                    badgeClass = "bg-secondary";
+                                                    break;
+                                            }
+                                        }
+                                        <span class="badge @badgeClass">@order.Status</span>
+                                    </td>
+                                    <td>
+                                        <a href="/MyOrders" class="btn btn-sm btn-success">Details</a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div class="alert alert-info m-3">
+                    <p class="mb-0">You haven't placed any orders yet.</p>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Template Content Area - Controlled by admin -->
+    <div id="template-content">
+        <!-- This will be populated by the template if enabled by admin -->
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add hover effect to order rows
+            const orderRows = document.querySelectorAll('.order-row');
+            orderRows.forEach(row => {
+                row.addEventListener('mouseenter', function() {
+                    this.style.backgroundColor = '#f8f9fa';
+                    this.style.transition = 'background-color 0.2s ease';
+                });
+                
+                row.addEventListener('mouseleave', function() {
+                    this.style.backgroundColor = '';
+                    this.style.transition = 'background-color 0.2s ease';
+                });
+            });
+            
+            // Setup refresh button
+            document.getElementById('refreshOrders').addEventListener('click', function() {
+                fetchOrderUpdates();
+                
+                // Show loading spinner
+                this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Refreshing...';
+                const button = this;
+                
+                // Reset button after 1 second
+                setTimeout(function() {
+                    button.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Refresh';
+                }, 1000);
+            });
+            
+            // Setup auto refresh for order statuses
+            setupOrderStatusRefresh();
+            
+            // Try to load template elements if they exist
+            loadTemplateElements();
+        });
+        
+        function loadTemplateElements() {
+            // Call load template API but don't worry if it fails
+            fetch('/api/templates/active?pageName=Dashboard')
+                .then(response => response.json())
+                .then(data => {
+                    if (data && data.elements) {
+                        const templateContent = document.getElementById('template-content');
+                        templateContent.innerHTML = ''; // Clear any existing content
+                        
+                        // Render each element except my-orders (we already have that)
+                        data.elements.forEach(element => {
+                            if (element.id !== 'my-orders') {
+                                const elementDiv = document.createElement('div');
+                                elementDiv.id = element.id;
+                                elementDiv.style.position = 'relative';
+                                elementDiv.style.left = element.x + 'px';
+                                elementDiv.style.top = element.y + 'px';
+                                elementDiv.style.width = element.width + 'px';
+                                elementDiv.style.height = element.height + 'px';
+                                
+                                if (element.type === 'Button') {
+                                    elementDiv.className = 'btn';
+                                    elementDiv.style.backgroundColor = element.color;
+                                    elementDiv.style.color = '#fff';
+                                    elementDiv.innerText = element.text;
+                                } else if (element.type === 'Label') {
+                                    elementDiv.style.color = element.color;
+                                    elementDiv.innerText = element.text;
+                                }
+                                
+                                templateContent.appendChild(elementDiv);
+                            }
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.log('Failed to load template, using default layout', error);
+                });
+        }
+        
+        // Function to periodically refresh order statuses
+        function setupOrderStatusRefresh() {
+            // Only set up refresh if we have orders
+            if (document.querySelectorAll('.order-row').length === 0) return;
+            
+            // Refresh every 30 seconds
+            setInterval(() => {
+                fetchOrderUpdates();
+            }, 30000);
+        }
+        
+        // Function to fetch updated order statuses
+        function fetchOrderUpdates() {
+            const orderIds = Array.from(document.querySelectorAll('.order-row')).map(row => 
+                row.getAttribute('data-order-id')
+            );
+            
+            if (orderIds.length === 0) return;
+            
+            const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+            
+            fetch('?handler=CheckOrderStatus', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': token
+                },
+                body: JSON.stringify({ orderIds: orderIds })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data && data.orders) {
+                    updateOrderStatuses(data.orders);
+                }
+            })
+            .catch(error => console.error('Error fetching order updates:', error));
+        }
+        
+        // Function to update order statuses in the UI
+        function updateOrderStatuses(orders) {
+            orders.forEach(order => {
+                const row = document.querySelector(`.order-row[data-order-id="${order.id}"]`);
+                if (!row) return;
+                
+                const statusBadge = row.querySelector('.badge');
+                if (!statusBadge) return;
+                
+                // Update status text
+                statusBadge.textContent = order.status;
+                
+                // Update badge class
+                statusBadge.className = 'badge'; // Reset classes
+                
+                // Add appropriate class based on status
+                switch (order.status) {
+                    case 'Pending':
+                        statusBadge.classList.add('bg-warning', 'text-dark');
+                        break;
+                    case 'OrderReceived':
+                        statusBadge.classList.add('bg-info', 'text-dark');
+                        break;
+                    case 'OnGoing':
+                        statusBadge.classList.add('bg-primary');
+                        break;
+                    case 'Processing':
+                        statusBadge.classList.add('bg-primary');
+                        break;
+                    case 'ReadyToServe':
+                        statusBadge.classList.add('bg-info', 'text-dark');
+                        break;
+                    case 'Completed':
+                        statusBadge.classList.add('bg-success');
+                        break;
+                    case 'Cancelled':
+                        statusBadge.classList.add('bg-danger');
+                        break;
+                    default:
+                        statusBadge.classList.add('bg-secondary');
+                }
+                
+                // Flash effect to highlight the change
+                statusBadge.style.transition = 'all 0.5s ease';
+                statusBadge.style.transform = 'scale(1.2)';
+                
+                setTimeout(() => {
+                    statusBadge.style.transform = 'scale(1)';
+                }, 300);
+            });
+        }
+    </script>
+} 
