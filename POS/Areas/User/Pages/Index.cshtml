@@ -91,7 +91,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-primary" id="addToCartButton" onclick="addToCart(document.getElementById('modalProductName').textContent, document.getElementById('modalProductImage').src)">Add to Cart</button>
+                <button type="button" class="btn btn-primary" id="addToCartButton" data-product-id="0" onclick="addToCart(currentProductId, document.getElementById('modalProductName').textContent, document.getElementById('modalProductImage').src)">Add to Cart</button>
             </div>
         </div>
     </div>
@@ -99,9 +99,15 @@
 
 @section Scripts {
     <script>
+        // Global variable to store the current product ID
+        let currentProductId = 0;
+        
         // Function to show product details in modal - use available properties
         function showProductDetails(elementId, imageUrl, productName) {
             console.log('Opening product details with elementId:', elementId);
+            
+            // Reset the current product ID
+            currentProductId = 0;
             
             // Save the current product context to prevent mixing up products in rapid clicks
             const currentProductContext = {
@@ -239,6 +245,12 @@
                     
                     console.log('Product details from API:', data);
                     
+                    // Store the product ID for cart operations
+                    if (data.productId || data.id) {
+                        currentProductId = data.productId || data.id;
+                        console.log('Set current product ID to:', currentProductId);
+                    }
+                    
                     // Update the modal with the returned data - prioritize productName and productDescription
                     if (data.productName) {
                         document.getElementById('modalProductName').textContent = data.productName;
@@ -246,6 +258,13 @@
                         document.getElementById('modalProductName').textContent = data.name;
                     } else {
                         document.getElementById('modalProductName').textContent = productName || 'Product';
+                    }
+                    
+                    // Set the product ID for the Add to Cart button
+                    const addToCartButton = document.getElementById('addToCartButton');
+                    if (addToCartButton) {
+                        // Use the productId or id from the API response
+                        addToCartButton.setAttribute('data-product-id', data.productId || data.id || 0);
                     }
                     
                     if (data.productPrice !== undefined && data.productPrice !== null) {
@@ -629,7 +648,7 @@
         }
         
         // Function to add item to cart
-        function addToCart(productName, imageUrl) {
+        function addToCart(productId, productName, imageUrl) {
             // Show loading state
             const addToCartButton = document.getElementById('addToCartButton');
             if (!addToCartButton) {
@@ -641,6 +660,7 @@
             addToCartButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Adding...';
             
             // Get the latest product details from the modal
+            const modalProductId = productId || 0;
             const modalProductName = document.getElementById('modalProductName').textContent;
             const modalProductPrice = document.getElementById('modalProductPrice').textContent;
             const modalProductDescription = document.getElementById('modalProductDescription').textContent;
@@ -648,6 +668,7 @@
             
             // Log what we're sending for debugging
             console.log('Adding to cart with details:', {
+                id: modalProductId,
                 name: modalProductName,
                 price: modalProductPrice,
                 description: modalProductDescription,
@@ -656,6 +677,7 @@
             
             // Create cart item data
             const cartData = {
+                productId: modalProductId,
                 productName: modalProductName,
                 productImageUrl: modalProductImage,
                 productImageDescription: modalProductDescription,

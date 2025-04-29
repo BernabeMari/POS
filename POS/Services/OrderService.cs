@@ -191,7 +191,7 @@ namespace POS.Services
             
             try
             {
-                // Update order status
+                // Update order status - always use OrderStatus.Completed for consistency
                 order.Status = OrderStatus.Completed;
                 order.UpdatedAt = DateTime.Now;
                 await _context.SaveChangesAsync();
@@ -217,28 +217,122 @@ namespace POS.Services
         // New method to handle stock deduction for completed orders
         private async Task DeductStockForCompletedOrderAsync(Order order)
         {
-            // Find the product element based on the order's product name
-            // This is a simplified approach - in a real system, you might want to store the product element ID in the order
+            _logger.LogInformation($"[STOCK-DEBUG] Processing stock deduction for order {order.Id}, product '{order.ProductName}'");
+            
+            // DIAGNOSTIC: Log all products in the database first
+            var allProductsInDb = await _context.PageElements
+                .Where(p => p.IsProduct)
+                .Select(p => new { p.Id, p.ProductName })
+                .ToListAsync();
+                
+            _logger.LogInformation($"[STOCK-DEBUG] All products in database: {string.Join(", ", allProductsInDb.Select(p => $"{p.ProductName} (ID: {p.Id})"))}");
+            
+            // DIAGNOSTIC: Log all ingredients in the database
+            var allIngredientsInDb = await _context.ProductIngredients
+                .Select(i => new { i.Id, i.PageElementId, i.IngredientName })
+                .ToListAsync();
+                
+            _logger.LogInformation($"[STOCK-DEBUG] All ingredients in database: {string.Join(", ", allIngredientsInDb.Select(i => $"{i.IngredientName} (ID: {i.Id}, ProductID: {i.PageElementId})"))}");
+            
+            // First, try to directly query the ingredients based on the product name from the order
+            _logger.LogInformation($"[STOCK-DEBUG] Searching for product with name '{order.ProductName}'");
+            
+            var productMatches = await _context.PageElements
+                .Where(p => p.IsProduct && 
+                    (p.ProductName.ToLower() == order.ProductName.ToLower() || 
+                     p.ProductName.ToLower().Contains(order.ProductName.ToLower()) || 
+                     order.ProductName.ToLower().Contains(p.ProductName.ToLower())))
+                .Select(p => new { p.Id, p.ProductName })
+                .ToListAsync();
+                
+            _logger.LogInformation($"[STOCK-DEBUG] Found {productMatches.Count} potential product matches: {string.Join(", ", productMatches.Select(p => $"{p.ProductName} (ID: {p.Id})"))}");
+            
+            if (!productMatches.Any())
+            {
+                _logger.LogError($"[STOCK-DEBUG] No product matches found for order {order.Id} with product name '{order.ProductName}'");
+                return;
+            }
+            
+            // See which of the potential matches has ingredients
+            int bestProductId = -1;
+            string bestProductName = null;
+            
+            foreach (var match in productMatches)
+            {
+                var ingredients = await _context.ProductIngredients
+                    .Where(i => i.PageElementId == match.Id)
+                    .ToListAsync();
+                    
+                _logger.LogInformation($"[STOCK-DEBUG] Product {match.ProductName} (ID: {match.Id}) has {ingredients.Count} ingredients");
+                
+                if (ingredients.Any())
+                {
+                    bestProductId = match.Id;
+                    bestProductName = match.ProductName;
+                    break;
+                }
+            }
+            
+            if (bestProductId == -1)
+            {
+                _logger.LogError($"[STOCK-DEBUG] None of the potential product matches has ingredients");
+                return;
+            }
+            
+            _logger.LogInformation($"[STOCK-DEBUG] Selected product {bestProductName} (ID: {bestProductId}) as the best match");
+            
+            // Load the selected product with its ingredients
             var productElement = await _context.PageElements
                 .Include(e => e.Ingredients)
-                .FirstOrDefaultAsync(e => e.IsProduct && e.ProductName == order.ProductName);
-            
+                .FirstOrDefaultAsync(e => e.Id == bestProductId);
+                
             if (productElement == null)
             {
-                _logger.LogWarning($"Could not find product element for order {order.Id} with product name '{order.ProductName}'");
+                _logger.LogError($"[STOCK-DEBUG] Failed to load selected product with ID {bestProductId}");
                 return;
             }
             
+            // Double check if ingredients are loaded
             if (productElement.Ingredients == null || !productElement.Ingredients.Any())
             {
-                _logger.LogWarning($"Product {productElement.ProductName} does not have any ingredients configured. No stock will be deducted.");
-                return;
+                _logger.LogInformation($"[STOCK-DEBUG] Product loaded but ingredients not included, trying direct query");
+                
+                // Try directly querying for ingredients
+                var ingredients = await _context.ProductIngredients
+                    .Where(i => i.PageElementId == productElement.Id)
+                    .ToListAsync();
+                    
+                if (ingredients.Any())
+                {
+                    _logger.LogInformation($"[STOCK-DEBUG] Found {ingredients.Count} ingredients via direct query");
+                    productElement.Ingredients = ingredients;
+                }
+                else
+                {
+                    _logger.LogError($"[STOCK-DEBUG] No ingredients found for product {productElement.ProductName} (ID: {productElement.Id})");
+                    return;
+                }
             }
             
-            // Log the ingredients that will be deducted
+            // Log all ingredients for this product
+            _logger.LogInformation($"[STOCK-DEBUG] Product {productElement.ProductName} has {productElement.Ingredients.Count} ingredients:");
             foreach (var ingredient in productElement.Ingredients)
             {
-                _logger.LogInformation($"Deducting {ingredient.Quantity * order.Quantity} {ingredient.Unit} of {ingredient.IngredientName} for completed order {order.Id}");
+                _logger.LogInformation($"[STOCK-DEBUG] - Ingredient: {ingredient.IngredientName}, Quantity: {ingredient.Quantity}, Unit: {ingredient.Unit}");
+            }
+            
+            // DIAGNOSTIC: Check stock status for each ingredient before deduction
+            foreach (var ingredient in productElement.Ingredients)
+            {
+                var stock = await _stockService.GetStockByNameAsync(ingredient.IngredientName);
+                if (stock != null)
+                {
+                    _logger.LogInformation($"[STOCK-DEBUG] Ingredient {ingredient.IngredientName} has {stock.Quantity} {stock.UnitType} in stock");
+                }
+                else
+                {
+                    _logger.LogWarning($"[STOCK-DEBUG] Ingredient {ingredient.IngredientName} not found in stock");
+                }
             }
             
             // Update stock for all ingredients
@@ -250,11 +344,39 @@ namespace POS.Services
             
             if (!stockUpdated)
             {
-                _logger.LogWarning($"Failed to update stock for some ingredients in completed order {order.Id}. Check stock levels and ingredient names.");
+                _logger.LogWarning($"[STOCK-DEBUG] Failed to update stock for some ingredients in completed order {order.Id}");
+                
+                // DIAGNOSTIC: Check stock status for each ingredient after attempted deduction
+                foreach (var ingredient in productElement.Ingredients)
+                {
+                    var stock = await _stockService.GetStockByNameAsync(ingredient.IngredientName);
+                    if (stock != null)
+                    {
+                        _logger.LogInformation($"[STOCK-DEBUG] After attempt: Ingredient {ingredient.IngredientName} has {stock.Quantity} {stock.UnitType} in stock");
+                    }
+                    else
+                    {
+                        _logger.LogWarning($"[STOCK-DEBUG] After attempt: Ingredient {ingredient.IngredientName} not found in stock");
+                    }
+                }
             }
             else
             {
-                _logger.LogInformation($"Successfully deducted stock for all ingredients in order {order.Id}");
+                _logger.LogInformation($"[STOCK-DEBUG] Successfully deducted stock for all ingredients in order {order.Id}");
+                
+                // DIAGNOSTIC: Verify stock was actually updated
+                foreach (var ingredient in productElement.Ingredients)
+                {
+                    var stock = await _stockService.GetStockByNameAsync(ingredient.IngredientName);
+                    if (stock != null)
+                    {
+                        _logger.LogInformation($"[STOCK-DEBUG] After successful deduction: Ingredient {ingredient.IngredientName} has {stock.Quantity} {stock.UnitType} in stock");
+                    }
+                    else
+                    {
+                        _logger.LogWarning($"[STOCK-DEBUG] After successful deduction: Ingredient {ingredient.IngredientName} not found in stock");
+                    }
+                }
             }
         }
 
@@ -282,7 +404,8 @@ namespace POS.Services
                 return null;
             }
             
-            // Set discount request properties
+            // Mark only the current order as awaiting discount approval instead of all pending orders
+            // This ensures a single request for the entire cart
             order.IsDiscountRequested = true;
             order.DiscountType = discountType;
             order.Status = OrderStatus.AwaitingDiscountApproval;
@@ -290,6 +413,7 @@ namespace POS.Services
             order.UpdatedAt = DateTime.Now;
             
             await _context.SaveChangesAsync();
+            
             return order;
         }
         
@@ -313,7 +437,7 @@ namespace POS.Services
                 return order;
             }
             
-            // Calculate discount
+            // Apply discount to just this order instead of all pending orders
             order.IsDiscountApproved = true;
             order.DiscountApprovedById = managerId;
             order.DiscountPercentage = discountPercentage;
@@ -330,11 +454,12 @@ namespace POS.Services
             // Update total price with discount
             order.TotalPrice = order.OriginalTotalPrice - order.DiscountAmount;
             
-            // Reset status to Pending so customer can proceed with payment
+            // Set the order status back to Pending so payment can proceed
             order.Status = OrderStatus.Pending;
             order.UpdatedAt = DateTime.Now;
             
             await _context.SaveChangesAsync();
+            
             return order;
         }
         
@@ -351,7 +476,7 @@ namespace POS.Services
                 return null;
             }
             
-            // Reset discount properties
+            // Reset discount properties for just this order
             order.IsDiscountRequested = false;
             order.IsDiscountApproved = false;
             order.DiscountType = null;
@@ -370,6 +495,7 @@ namespace POS.Services
             order.UpdatedAt = DateTime.Now;
             
             await _context.SaveChangesAsync();
+            
             return order;
         }
         
@@ -386,7 +512,7 @@ namespace POS.Services
                 return null;
             }
             
-            // Set discount properties to indicate it was explicitly skipped
+            // Set discount properties for just this order to indicate it was explicitly skipped
             order.IsDiscountRequested = false;
             order.IsDiscountApproved = false;
             order.DiscountType = "Skipped";
@@ -400,11 +526,8 @@ namespace POS.Services
                 order.OriginalTotalPrice = 0;
             }
             
-            // Set status to Pending so payment can proceed
-            order.Status = OrderStatus.Pending;
-            order.UpdatedAt = DateTime.Now;
-            
             await _context.SaveChangesAsync();
+            
             return order;
         }
         

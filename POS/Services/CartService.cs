@@ -44,10 +44,14 @@ namespace POS.Services
                 }
                 
                 // Check if the product already exists in the cart
-                var existingItem = await _context.CartItems
-                    .FirstOrDefaultAsync(c => c.UserId == cartItem.UserId && 
-                            (c.ProductId == cartItem.ProductId || 
-                            (c.ProductName == cartItem.ProductName && c.Price == cartItem.Price)));
+                // First check by ProductId if it exists
+                var existingItem = cartItem.ProductId.HasValue
+                    ? await _context.CartItems.FirstOrDefaultAsync(
+                        c => c.UserId == cartItem.UserId && c.ProductId == cartItem.ProductId)
+                    : await _context.CartItems.FirstOrDefaultAsync(
+                        c => c.UserId == cartItem.UserId && 
+                        c.ProductName == cartItem.ProductName && 
+                        c.Price == cartItem.Price);
                 
                 if (existingItem != null)
                 {
@@ -144,9 +148,22 @@ namespace POS.Services
 
         public async Task<decimal> GetCartTotalAsync(string userId)
         {
-            return await _context.CartItems
+            _logger.LogInformation($"Calculating cart total for user: {userId}");
+            var cartItems = await _context.CartItems
                 .Where(c => c.UserId == userId)
-                .SumAsync(c => c.Price * c.Quantity);
+                .ToListAsync();
+                
+            _logger.LogInformation($"Found {cartItems.Count} cart items for total calculation");
+            
+            foreach (var item in cartItems)
+            {
+                _logger.LogInformation($"Cart item: ID={item.Id}, Product={item.ProductName}, Price={item.Price}, Quantity={item.Quantity}, Total={item.Price * item.Quantity}");
+            }
+            
+            decimal total = cartItems.Sum(c => c.Price * c.Quantity);
+            _logger.LogInformation($"Final cart total: {total}");
+            
+            return total;
         }
     }
 } 

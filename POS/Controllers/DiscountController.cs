@@ -43,6 +43,23 @@ namespace POS.Controllers
                 return NotFound(new { success = false, message = "Order not found" });
             }
             
+            // Check if discount already requested to prevent duplicate requests
+            if (order.IsDiscountRequested)
+            {
+                _logger.LogInformation($"Discount already requested for order {orderId}, redirecting to pending page");
+                
+                if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+                {
+                    return Json(new { 
+                        success = true, 
+                        message = "Discount request already submitted. Please wait for manager approval.", 
+                        order = order 
+                    });
+                }
+                
+                return RedirectToAction("DiscountPending", "Payment", new { orderId = orderId });
+            }
+            
             // Request discount
             var updatedOrder = await _orderService.RequestDiscountAsync(orderId, discountType);
             
@@ -268,6 +285,7 @@ namespace POS.Controllers
         }
         
         [HttpGet]
+        [HttpPost]
         [Authorize]
         public async Task<IActionResult> CheckDiscountStatus(int orderId)
         {

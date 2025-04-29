@@ -51,16 +51,21 @@ namespace POS.Pages.api.cart
                 Product product = null;
                 if (request.ProductId > 0)
                 {
+                    _logger.LogInformation($"Fetching product with ID: {request.ProductId}");
                     product = await _productService.GetProductByIdAsync(request.ProductId);
                     if (product == null)
                     {
-                        return BadRequest(new { success = false, message = "Product not found" });
+                        _logger.LogWarning($"Product not found with ID: {request.ProductId}");
+                        // If product ID is provided but not found, we'll continue with the provided details
+                        // This allows adding custom products not in the database
                     }
-                    
-                    // Check if product is available
-                    if (!product.IsAvailable)
+                    else
                     {
-                        return BadRequest(new { success = false, message = "Product is not available" });
+                        // Check if product is available
+                        if (!product.IsAvailable)
+                        {
+                            return BadRequest(new { success = false, message = "Product is not available" });
+                        }
                     }
                 }
                 
@@ -68,7 +73,7 @@ namespace POS.Pages.api.cart
                 var cartItem = new CartItem
                 {
                     UserId = userId,
-                    ProductId = product?.Id,
+                    ProductId = product?.Id ?? (request.ProductId > 0 ? request.ProductId : null),
                     ProductName = product?.Name ?? request.ProductName,
                     ProductImageUrl = product?.ImageUrl ?? request.ProductImageUrl,
                     ProductImageDescription = product?.ImageDescription ?? request.ProductImageDescription ?? "",

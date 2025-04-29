@@ -26,6 +26,12 @@ namespace POS.Services
         
         public async Task<string> CreateOrder(decimal amount, string currency = "USD")
         {
+            // Validate the amount - PayPal requires positive values
+            if (amount <= 0)
+            {
+                throw new ArgumentException("Payment amount must be greater than zero");
+            }
+            
             // Create the order request
             var orderRequest = new OrderRequest()
             {
