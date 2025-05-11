@@ -1,0 +1,71 @@
+@{
+    ViewData["Title"] = "Payment Cancelled";
+    Layout = "_Layout";
+}
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow-sm border-0">
+                <div class="card-body text-center p-5">
+                    <div class="mb-4">
+                        <i class="bi bi-x-circle-fill text-danger" style="font-size: 5rem;"></i>
+                    </div>
+                    <h1 class="card-title mb-3">Payment Cancelled</h1>
+                    <p class="card-text fs-5 mb-4">Your payment process has been cancelled.</p>
+                    
+                    <div class="mt-3 d-flex justify-content-center">
+                        <a href="/User/Index" class="btn btn-primary me-2">Return to Dashboard</a>
+                        <a href="/Payment/Index" class="btn btn-outline-primary">Try Again</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Function to prevent navigation - defined here to properly remove the event listener
+        function preventNavigation(event) {
+            event.preventDefault();
+            event.returnValue = '';
+            return '';
+        }
+        
+        // Function to disable navigation lock
+        function disableNavigationBlock() {
+            // Remove navigation lock
+            window.removeEventListener('beforeunload', preventNavigation);
+            
+            // Clear payment in progress flag
+            sessionStorage.removeItem('paymentInProgress');
+            
+            // Hide overlay if it exists
+            const paymentOverlay = document.getElementById('paymentOverlay');
+            if (paymentOverlay) {
+                paymentOverlay.style.display = 'none';
+            }
+        }
+        
+        // Remove payment overlay and navigation lock if they exist
+        document.addEventListener('DOMContentLoaded', function() {
+            // Disable all navigation blocks
+            disableNavigationBlock();
+            
+            // Add an animation to the error icon
+            const errorIcon = document.querySelector('.bi-x-circle-fill');
+            
+            errorIcon.style.transform = 'scale(0)';
+            errorIcon.style.transition = 'transform 0.5s ease';
+            
+            setTimeout(() => {
+                errorIcon.style.transform = 'scale(1.2)';
+                
+                setTimeout(() => {
+                    errorIcon.style.transform = 'scale(1)';
+                }, 200);
+            }, 300);
+        });
+    </script>
+} 

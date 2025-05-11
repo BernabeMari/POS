@@ -1,0 +1,35 @@
+@{
+    ViewData["Title"] = "PayPal Integration Test";
+}
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4>Test PayPal Integration</h4>
+                </div>
+                <div class="card-body">
+                    <p class="lead">This page allows you to test the PayPal integration directly.</p>
+                    <p>Clicking the button below will:</p>
+                    <ol>
+                        <li>Create a test PayPal order for $1.00</li>
+                        <li>Redirect to PayPal Sandbox</li>
+                        <li>Process the payment using test accounts</li>
+                    </ol>
+                    
+                    <div class="d-grid gap-2 mt-4">
+                        <a href="@Url.Action("TestPayPal", "Test")" class="btn btn-lg btn-primary">
+                            <i class="bi bi-paypal me-2"></i> Test PayPal Integration
+                        </a>
+                    </div>
+                    
+                    <div class="alert alert-info mt-4">
+                        <h5>Test Accounts</h5>
+                        <p><strong>Buyer:</strong> sb-i8q3x29279806@personal.example.com / Password: kDRq=5!V</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div> 

@@ -1,0 +1,44 @@
+@page
+@model POS.Pages.Utility.DecryptToolModel
+@{
+    ViewData["Title"] = "Decryption Tool";
+    Layout = "_Layout";
+}
+
+<div class="container mt-4">
+    <h1>Decryption Tool</h1>
+    <p class="text-danger">WARNING: This page is for debugging only and should be removed in production.</p>
+    
+    <div class="row">
+        <div class="col-md-6">
+            <form method="post">
+                <div class="form-group mb-3">
+                    <label asp-for="EncryptedValue">Encrypted Value:</label>
+                    <input asp-for="EncryptedValue" class="form-control" />
+                </div>
+                <button type="submit" class="btn btn-primary">Decrypt</button>
+            </form>
+            
+            @if (!string.IsNullOrEmpty(Model.DecryptedValue))
+            {
+                <div class="mt-4">
+                    <h2>Result:</h2>
+                    <div class="card">
+                        <div class="card-body">
+                            <p><strong>Decrypted value:</strong> @Model.DecryptedValue</p>
+                        </div>
+                    </div>
+                </div>
+            }
+            
+            @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+            {
+                <div class="mt-4">
+                    <div class="alert alert-danger">
+                        @Model.ErrorMessage
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div> 

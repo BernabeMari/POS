@@ -1,0 +1,74 @@
+@page
+@model POS.Areas.Admin.Pages.LoginSettingsModel
+@{
+    ViewData["Title"] = "Login Security Settings";
+}
+
+<div class="container-fluid mt-3">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5>Login Security Settings</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                        
+                        @if (Model.SuccessMessage != null)
+                        {
+                            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                                <i class="bi bi-check-circle-fill me-2"></i>@Model.SuccessMessage
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        }
+                        
+                        <div class="form-check form-switch mb-3">
+                            <input asp-for="Settings.EnableLockout" class="form-check-input" type="checkbox" id="enableLockout" />
+                            <label asp-for="Settings.EnableLockout" class="form-check-label"></label>
+                            <span asp-validation-for="Settings.EnableLockout" class="text-danger"></span>
+                            <div class="form-text">When enabled, accounts will be temporarily locked after too many failed login attempts.</div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label asp-for="Settings.MaxLoginAttempts" class="control-label"></label>
+                                    <input asp-for="Settings.MaxLoginAttempts" class="form-control" min="1" max="10" />
+                                    <span asp-validation-for="Settings.MaxLoginAttempts" class="text-danger"></span>
+                                    <div class="form-text">Maximum number of failed login attempts before an account is locked.</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label asp-for="Settings.LockoutDuration" class="control-label"></label>
+                                    <input asp-for="Settings.LockoutDuration" class="form-control" min="10" max="3600" />
+                                    <span asp-validation-for="Settings.LockoutDuration" class="text-danger"></span>
+                                    <div class="form-text">How long (in seconds) an account remains locked after too many failed attempts.</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle-fill me-2"></i>Current settings: 
+                            <ul class="mb-0">
+                                <li>Account Lockout: <strong>@(Model.Settings.EnableLockout ? "Enabled" : "Disabled")</strong></li>
+                                <li>Max Failed Attempts: <strong>@Model.Settings.MaxLoginAttempts</strong></li>
+                                <li>Lockout Duration: <strong>@Model.Settings.LockoutDuration seconds</strong></li>
+                                <li>Last Updated: <strong>@Model.Settings.LastUpdated.ToString("yyyy-MM-dd HH:mm:ss")</strong> by <strong>@Model.Settings.UpdatedBy</strong></li>
+                            </ul>
+                        </div>
+                        
+                        <div class="form-group mt-3">
+                            <button type="submit" class="btn btn-primary">Save Settings</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+} 

@@ -1,0 +1,128 @@
+/* Custom styles for POS System */
+
+/* Main layout */
+body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.main-content {
+    flex: 1;
+}
+
+.footer {
+    margin-top: auto;
+    padding: 20px 0;
+}
+
+/* Card styles */
+.card {
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+}
+
+/* Button styles */
+.btn-primary {
+    transition: background-color 0.3s ease;
+}
+
+.btn-primary:hover {
+    background-color: #0069d9;
+    border-color: #0062cc;
+}
+
+/* Form styles */
+.form-control:focus {
+    border-color: #80bdff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+/* Admin page editor styles */
+.element-item {
+    background-color: #ffffff;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+}
+
+.selected-element {
+    outline: 2px solid #007bff !important;
+    z-index: 100;
+}
+
+/* Template layout styles */
+.template-body {
+    min-height: 100vh;
+    background-color: #f8f9fa;
+}
+
+.container-fluid {
+    height: 100%;
+    padding: 20px;
+}
+
+.template-form-container {
+    position: relative;
+    min-height: 600px;
+    margin: 0 auto;
+    padding: 20px;
+    width: 100%;
+    max-width: 1000px;
+}
+
+/* Animation for loading spinners */
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.spinner-border {
+    animation: spin 1s linear infinite;
+}
+
+/* Registration form specific styles */
+#registerForm {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+#template-content .mb-3, 
+#registerSubmit, 
+#login-link-container {
+    transition: all 0.3s ease;
+}
+
+#template-content .form-control {
+    transition: all 0.3s ease;
+}
+
+/* For visibility during template editing */
+#template-content .mb-3 label,
+#template-content .form-check-label {
+    display: inline-block;
+    margin-bottom: 0.5rem;
+}
+
+/* Optional: style for form validation errors */
+.field-validation-error {
+    color: #dc3545;
+    font-size: 80%;
+    margin-top: 0.25rem;
+    position: absolute;
+    bottom: -20px;
+    left: 0;
+}
+
+/* Make sure inputs are visible with any background color */
+#template-content .form-control,
+#template-content .form-check-input {
+    background-color: white;
+    border: 1px solid #ced4da;
+} 

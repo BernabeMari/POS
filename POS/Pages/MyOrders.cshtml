@@ -1,0 +1,152 @@
+@page
+@model POS.Pages.MyOrdersModel
+@using POS.Models
+@{
+    ViewData["Title"] = "My Orders";
+}
+
+<div class="container-fluid" style="background-color: @Model.BackgroundColor; min-height: 100vh; padding-top: 20px; padding-bottom: 40px;">
+    @if (Model.OrdersTableElement != null)
+    {
+        <div style="position: absolute; left: @(Model.OrdersTableElement.PositionX)px; top: @(Model.OrdersTableElement.PositionY)px; width: @(Model.OrdersTableElement.Width)px; height: @(Model.OrdersTableElement.Height)px; @Model.OrdersTableElement.AdditionalStyles">
+            <div class="card h-100">
+                <div class="card-header bg-@Model.OrdersTableElement.Color.Replace("#", "")">
+                    <h4>@Model.OrdersTableElement.Text</h4>
+                </div>
+                <div class="card-body">
+                    @if (Model.Orders.Any())
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Order ID</th>
+                                        <th>Image</th>
+                                        <th>Product</th>
+                                        <th>Price</th>
+                                        <th>Quantity</th>
+                                        <th>Total</th>
+                                        <th>Status</th>
+                                        <th>Date</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var order in Model.Orders)
+                                    {
+                                        <tr>
+                                            <td>#@order.Id</td>
+                                            <td>
+                                                @if (!string.IsNullOrEmpty(order.ProductImageUrl))
+                                                {
+                                                    <img src="@order.ProductImageUrl" alt="@order.ProductImageDescription" 
+                                                        class="img-thumbnail" style="max-width: 50px; max-height: 50px;">
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">No image</span>
+                                                }
+                                            </td>
+                                            <td>@order.ProductName</td>
+                                            <td>$@order.Price.ToString("0.00")</td>
+                                            <td>@order.Quantity</td>
+                                            <td>$@order.TotalPrice.ToString("0.00")</td>
+                                            <td>
+                                                @{
+                                                    string badgeClass = "bg-secondary";
+                                                    
+                                                    switch (order.Status)
+                                                    {
+                                                        case OrderStatus.Pending:
+                                                            badgeClass = "bg-warning text-dark";
+                                                            break;
+                                                        case OrderStatus.Processing:
+                                                            badgeClass = "bg-primary";
+                                                            break;
+                                                        case OrderStatus.OnGoing:
+                                                            badgeClass = "bg-primary";
+                                                            break;
+                                                        case OrderStatus.OrderReceived:
+                                                            badgeClass = "bg-info text-dark";
+                                                            break;
+                                                        case OrderStatus.ReadyToServe:
+                                                            badgeClass = "bg-info text-dark";
+                                                            break;
+                                                        case OrderStatus.Completed:
+                                                            badgeClass = "bg-success";
+                                                            break;
+                                                        case OrderStatus.Cancelled:
+                                                            badgeClass = "bg-danger";
+                                                            break;
+                                                        default:
+                                                            badgeClass = "bg-secondary";
+                                                            break;
+                                                    }
+                                                }
+                                                <span class="badge @badgeClass">@order.Status</span>
+                                            </td>
+                                            <td>@order.CreatedAt.ToString("MMM dd, yyyy HH:mm")</td>
+                                            <td>
+                                                @if (order.Status == OrderStatus.Pending)
+                                                {
+                                                    <form method="post" asp-page-handler="CancelOrder">
+                                                        <input type="hidden" name="orderId" value="@order.Id">
+                                                        <button type="submit" class="btn btn-danger btn-sm"
+                                                                onclick="return confirm('Are you sure you want to cancel this order?')">
+                                                            Cancel
+                                                        </button>
+                                                    </form>
+                                                }
+                                                else
+                                                {
+                                                    <button class="btn btn-secondary btn-sm" disabled>@(order.Status == OrderStatus.Cancelled ? "Cancelled" : "Processing")</button>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="alert alert-info">
+                            <h4>No orders found</h4>
+                            <p>You haven't placed any orders yet. Visit the <a asp-page="/Dashboard">Dashboard</a> to browse products.</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+    
+    @if (Model.BackButtonElement != null)
+    {
+        <div style="position: absolute; left: @(Model.BackButtonElement.PositionX)px; top: @(Model.BackButtonElement.PositionY)px; width: @(Model.BackButtonElement.Width)px; height: @(Model.BackButtonElement.Height)px;">
+            <a asp-area="User" asp-page="/Index" class="btn btn-primary w-100 h-100">
+                <i class="bi bi-arrow-left"></i> @Model.BackButtonElement.Text
+            </a>
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <script>
+        // Add row highlight on hover
+        document.addEventListener('DOMContentLoaded', function() {
+            const tableRows = document.querySelectorAll('tbody tr');
+            
+            tableRows.forEach(row => {
+                row.addEventListener('mouseenter', function() {
+                    this.style.backgroundColor = '#f0f8ff';
+                    this.style.transition = 'background-color 0.2s ease';
+                });
+                
+                row.addEventListener('mouseleave', function() {
+                    this.style.backgroundColor = '';
+                    this.style.transition = 'background-color 0.2s ease';
+                });
+            });
+        });
+    </script>
+} 

@@ -1,0 +1,1005 @@
+@page
+@model POS.Pages.RegisterModel
+@{
+    ViewData["Title"] = "Register";
+    Layout = "_TemplateLayout";
+}
+
+<!-- Keep track of whether we have validation errors -->
+<input type="hidden" id="has-validation-errors" value="@Model.HasValidationErrors.ToString().ToLower()" />
+
+<!-- Hidden anti-forgery token that template will use -->
+<form id="tokenForm" method="post" style="display:none">
+    @Html.AntiForgeryToken()
+</form>
+
+<div id="templateContent" class="vh-100 d-flex justify-content-center align-items-center">
+    <!-- Template form will be loaded here -->
+    <div class="text-center p-5">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="mt-3">Loading registration form...</p>
+    </div>
+</div>
+
+<!-- Hidden form for validation summary that will be used by the template -->
+<div id="validation-container" style="display: none;">
+    <div asp-validation-summary="All" class="text-danger"></div>
+</div>
+
+@section Scripts {
+    <!-- QR code library -->
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    
+    <script>
+        // Global variables
+        let qrScanner = null;
+        let isSeniorOrPWD = false;
+        let seniorPwdType = '';
+        
+        // Load the template when the page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            loadTemplate();
+            // Set initial values for senior/PWD fields
+            const seniorPwdCheckbox = document.getElementById('senior-pwd-');
+            if (seniorPwdCheckbox) {
+                // Ensure hidden field value matches checkbox state
+                document.getElementById('Input_IsSeniorOrPWD').value = seniorPwdCheckbox.checked ? 'true' : 'false';
+                
+                // Clear the type field if checkbox is unchecked
+                if (!seniorPwdCheckbox.checked) {
+                    document.getElementById('Input_SeniorPwdType').value = '';
+                }
+            }
+        });
+
+        function loadTemplate() {
+            fetch('/api/templates/active?pageName=Register')
+                .then(response => response.json())
+                .then(data => {
+                    if (data && data.elements && data.elements.length > 0) {
+                        renderTemplate(data);
+                    } else {
+                        showError("Could not load the registration template.");
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading template:', error);
+                    showError("Failed to load the registration form. Please try again later.");
+                });
+        }
+
+        function showError(message) {
+            const container = document.getElementById('templateContent');
+            container.innerHTML = `
+                <div class="alert alert-danger" role="alert">
+                    <h4 class="alert-heading">Error</h4>
+                    <p>${message}</p>
+                    <hr>
+                    <p class="mb-0">Please contact the administrator or try again later.</p>
+                </div>
+            `;
+        }
+
+        function renderTemplate(template) {
+            const container = document.getElementById('templateContent');
+            
+            // Set background color if specified
+            if (template.backgroundColor) {
+                container.style.backgroundColor = template.backgroundColor;
+            }
+            
+            // Create a register form container
+            const formContainer = document.createElement('div');
+            formContainer.className = 'position-relative template-form-container';
+            formContainer.style.width = '100%';
+            formContainer.style.height = '100%';
+            
+            // Create the form element
+            const form = document.createElement('form');
+            form.action = '';
+            form.method = 'post';
+            form.id = 'register-form';
+            
+            // Add CSRF token (required for ASP.NET Core forms)
+            const antiForgeryToken = document.querySelector('#tokenForm input[name="__RequestVerificationToken"]');
+            if (antiForgeryToken) {
+                const tokenInput = document.createElement('input');
+                tokenInput.type = 'hidden';
+                tokenInput.name = '__RequestVerificationToken';
+                tokenInput.value = antiForgeryToken.value;
+                form.appendChild(tokenInput);
+            } else {
+                console.error('Anti-forgery token not found!');
+            }
+            
+            // Add hidden field for senior/PWD status
+            const seniorPwdInput = document.createElement('input');
+            seniorPwdInput.type = 'hidden';
+            seniorPwdInput.id = 'Input_IsSeniorOrPWD';
+            seniorPwdInput.name = 'Input.IsSeniorOrPWD';
+            
+            // Get value from model or default to false
+            let isSeniorOrPwd = false;
+            try {
+                isSeniorOrPwd = '@Model.Input?.IsSeniorOrPWD'.toLowerCase() === 'true';
+            } catch(e) {
+                // Ignore any parsing errors
+            }
+            seniorPwdInput.value = isSeniorOrPwd ? 'true' : 'false';
+            form.appendChild(seniorPwdInput);
+            
+            // Add hidden field for senior/PWD type (Senior or PWD)
+            const seniorPwdTypeInput = document.createElement('input');
+            seniorPwdTypeInput.type = 'hidden';
+            seniorPwdTypeInput.id = 'Input_SeniorPwdType';
+            seniorPwdTypeInput.name = 'Input.SeniorPwdType';
+            
+            // Get value from model or default to empty
+            let seniorPwdType = '';
+            try {
+                seniorPwdType = '@Model.Input?.SeniorPwdType' || '';
+            } catch(e) {
+                // Ignore any parsing errors
+            }
+            seniorPwdTypeInput.value = seniorPwdType;
+            form.appendChild(seniorPwdTypeInput);
+            
+            // Create a container for the error messages at the top of the form
+            const errorMessageContainer = document.createElement('div');
+            errorMessageContainer.className = 'alert alert-danger mb-4';
+            errorMessageContainer.id = 'error-message-container';
+            errorMessageContainer.style.display = 'none';
+            errorMessageContainer.setAttribute('role', 'alert');
+            form.appendChild(errorMessageContainer);
+            
+            // Use the validation summary from the hidden container
+            const validationSummary = document.querySelector('#validation-container .validation-summary-errors');
+            
+            // Map elements to actual form controls
+            template.elements.forEach(element => {
+                const elementDiv = document.createElement('div');
+                elementDiv.className = 'position-absolute';
+                elementDiv.style.left = element.x + 'px';
+                elementDiv.style.top = element.y + 'px';
+                elementDiv.style.width = element.width + 'px';
+                elementDiv.style.height = element.height + 'px';
+                
+                if (element.additionalStyles) {
+                    elementDiv.style.cssText += element.additionalStyles;
+                }
+                
+                if (element.type === 'InputField') {
+                    if (element.id === 'fullname-input') {
+                        const label = document.createElement('label');
+                        label.innerText = element.text;
+                        label.style.color = element.color;
+                        label.style.marginBottom = '5px';
+                        label.setAttribute('for', 'Input_FullName');
+                        elementDiv.appendChild(label);
+                        
+                        const input = document.createElement('input');
+                        input.type = 'text';
+                        input.className = 'form-control';
+                        input.id = 'Input_FullName';
+                        input.name = 'Input.FullName';
+                        input.required = true;
+                        
+                        // Add any existing value back to the field
+                        try {
+                            const existingValue = '@Model.Input?.FullName';
+                            if (existingValue && existingValue !== '@Model.Input?.FullName') {
+                                input.value = existingValue;
+                            }
+                        } catch(e) {
+                            // Ignore parsing errors
+                        }
+                        
+                        elementDiv.appendChild(input);
+                        
+                        // Add validation span
+                        const validationSpan = document.createElement('span');
+                        validationSpan.className = 'text-danger field-validation-valid';
+                        validationSpan.setAttribute('data-valmsg-for', 'Input.FullName');
+                        validationSpan.setAttribute('data-valmsg-replace', 'true');
+                        elementDiv.appendChild(validationSpan);
+                    }
+                    else if (element.id === 'username-input') {
+                        const label = document.createElement('label');
+                        label.innerText = element.text;
+                        label.style.color = element.color;
+                        label.style.marginBottom = '5px';
+                        label.setAttribute('for', 'Input_UserName');
+                        elementDiv.appendChild(label);
+                        
+                        const input = document.createElement('input');
+                        input.type = 'text';
+                        input.className = 'form-control';
+                        input.id = 'Input_UserName';
+                        input.name = 'Input.UserName';
+                        input.required = true;
+                        
+                        // Add any existing value back to the field
+                        try {
+                            const existingValue = '@Model.Input?.UserName';
+                            if (existingValue && existingValue !== '@Model.Input?.UserName') {
+                                input.value = existingValue;
+                            }
+                        } catch(e) {
+                            // Ignore parsing errors
+                        }
+                        
+                        elementDiv.appendChild(input);
+                        
+                        // Add validation span
+                        const validationSpan = document.createElement('span');
+                        validationSpan.className = 'text-danger field-validation-valid';
+                        validationSpan.setAttribute('data-valmsg-for', 'Input.UserName');
+                        validationSpan.setAttribute('data-valmsg-replace', 'true');
+                        elementDiv.appendChild(validationSpan);
+                    }
+                    else if (element.id === 'email-input') {
+                        const label = document.createElement('label');
+                        label.innerText = element.text;
+                        label.style.color = element.color;
+                        label.style.marginBottom = '5px';
+                        label.setAttribute('for', 'Input_Email');
+                        elementDiv.appendChild(label);
+                        
+                        const input = document.createElement('input');
+                        input.type = 'email';
+                        input.className = 'form-control';
+                        input.id = 'Input_Email';
+                        input.name = 'Input.Email';
+                        input.required = true;
+                        
+                        // Add any existing value back to the field
+                        try {
+                            const existingValue = '@Model.Input?.Email';
+                            if (existingValue && existingValue !== '@Model.Input?.Email') {
+                                input.value = existingValue;
+                            }
+                        } catch(e) {
+                            // Ignore parsing errors
+                        }
+                        
+                        elementDiv.appendChild(input);
+                        
+                        // Add validation span
+                        const validationSpan = document.createElement('span');
+                        validationSpan.className = 'text-danger field-validation-valid';
+                        validationSpan.setAttribute('data-valmsg-for', 'Input.Email');
+                        validationSpan.setAttribute('data-valmsg-replace', 'true');
+                        elementDiv.appendChild(validationSpan);
+                    } 
+                    else if (element.id === 'password-input') {
+                        const label = document.createElement('label');
+                        label.innerText = element.text;
+                        label.style.color = element.color;
+                        label.style.marginBottom = '5px';
+                        label.setAttribute('for', 'Input_Password');
+                        elementDiv.appendChild(label);
+                        
+                        const input = document.createElement('input');
+                        input.type = 'password';
+                        input.className = 'form-control';
+                        input.id = 'Input_Password';
+                        input.name = 'Input.Password';
+                        input.required = true;
+                        elementDiv.appendChild(input);
+                        
+                        // Add validation span
+                        const validationSpan = document.createElement('span');
+                        validationSpan.className = 'text-danger field-validation-valid';
+                        validationSpan.setAttribute('data-valmsg-for', 'Input.Password');
+                        validationSpan.setAttribute('data-valmsg-replace', 'true');
+                        elementDiv.appendChild(validationSpan);
+                    }
+                    else if (element.id === 'confirm-password') {
+                        const label = document.createElement('label');
+                        label.innerText = element.text;
+                        label.style.color = element.color;
+                        label.style.marginBottom = '5px';
+                        label.setAttribute('for', 'Input_ConfirmPassword');
+                        elementDiv.appendChild(label);
+                        
+                        const input = document.createElement('input');
+                        input.type = 'password';
+                        input.className = 'form-control';
+                        input.id = 'Input_ConfirmPassword';
+                        input.name = 'Input.ConfirmPassword';
+                        input.required = true;
+                        elementDiv.appendChild(input);
+                        
+                        // Add validation span
+                        const validationSpan = document.createElement('span');
+                        validationSpan.className = 'text-danger field-validation-valid';
+                        validationSpan.setAttribute('data-valmsg-for', 'Input.ConfirmPassword');
+                        validationSpan.setAttribute('data-valmsg-replace', 'true');
+                        elementDiv.appendChild(validationSpan);
+                    }
+                }
+                else if (element.id === 'senior-pwd-label' && element.type === 'Label') {
+                    const label = document.createElement('label');
+                    label.innerText = element.text || 'Are you a Senior Citizen or PWD? (Optional)';
+                    label.style.color = element.color;
+                    label.style.fontWeight = 'bold';
+                    elementDiv.appendChild(label);
+                }
+                else if (element.id === 'senior-pwd-' && element.type === 'Checkbox') {
+                    const checkboxDiv = document.createElement('div');
+                    checkboxDiv.className = 'form-check';
+                    
+                    const input = document.createElement('input');
+                    input.type = 'checkbox';
+                    input.className = 'form-check-input';
+                    input.id = 'senior-pwd-';
+                    input.name = 'Input.IsSeniorOrPWD';
+                    input.value = "true";
+                    
+                    // Restore checkbox state if it was checked
+                    try {
+                        const isChecked = '@Model.Input?.IsSeniorOrPWD' === 'True';
+                        if (isChecked) {
+                            input.checked = true;
+                        }
+                    } catch(e) {
+                        // Ignore parsing errors
+                    }
+                    
+                    checkboxDiv.appendChild(input);
+                    
+                    // Add hidden field to ensure false is sent when unchecked
+                    const hiddenInput = document.createElement('input');
+                    hiddenInput.type = 'hidden';
+                    hiddenInput.name = 'Input.IsSeniorOrPWD';
+                    hiddenInput.value = 'false';
+                    checkboxDiv.appendChild(hiddenInput);
+                    
+                    const label = document.createElement('label');
+                    label.innerText = element.text || 'Yes';
+                    label.className = 'form-check-label';
+                    label.setAttribute('for', 'senior-pwd-');
+                    label.style.color = element.color;
+                    checkboxDiv.appendChild(label);
+                    
+                    // Add validation span for the checkbox
+                    const validationSpan = document.createElement('span');
+                    validationSpan.className = 'text-danger field-validation-valid';
+                    validationSpan.setAttribute('data-valmsg-for', 'Input.IsSeniorOrPWD');
+                    validationSpan.setAttribute('data-valmsg-replace', 'true');
+                    checkboxDiv.appendChild(validationSpan);
+                    
+                    // Add validation span for the type field
+                    const typeValidationSpan = document.createElement('span');
+                    typeValidationSpan.className = 'text-danger field-validation-valid';
+                    typeValidationSpan.setAttribute('data-valmsg-for', 'Input.SeniorPwdType');
+                    typeValidationSpan.setAttribute('data-valmsg-replace', 'true');
+                    checkboxDiv.appendChild(typeValidationSpan);
+                    
+                    // Add note about verification requirement
+                    const verificationNote = document.createElement('small');
+                    verificationNote.className = 'form-text text-muted mt-1';
+                    verificationNote.innerHTML = 'If checked, you must verify through QR code scanning.';
+                    
+                    try {
+                        const isChecked = '@Model.Input?.IsSeniorOrPWD' === 'True';
+                        verificationNote.style.display = isChecked ? 'block' : 'none';
+                    } catch(e) {
+                        verificationNote.style.display = 'none';
+                    }
+                    
+                    checkboxDiv.appendChild(verificationNote);
+                    
+                    elementDiv.appendChild(checkboxDiv);
+                    
+                    // Add event listener to show/hide QR scanner
+                    input.addEventListener('change', function() {
+                        // Update hidden field
+                        document.getElementById('Input_IsSeniorOrPWD').value = this.checked ? 'true' : 'false';
+                        
+                        // Get the QR scanner button and container elements
+                        const scanQrButton = document.getElementById('scan-qr-button-element');
+                        const qrScannerContainer = document.getElementById('qr-scanner-container-element');
+                        
+                        if (this.checked) {
+                            // Show the QR scanner button and verification note if it exists
+                            if (scanQrButton) {
+                                scanQrButton.style.display = 'block';
+                                verificationNote.style.display = 'block';
+                            }
+                        } else {
+                            // Hide QR related elements
+                            if (scanQrButton) {
+                                scanQrButton.style.display = 'none';
+                                verificationNote.style.display = 'none';
+                            }
+                            if (qrScannerContainer) {
+                                qrScannerContainer.style.display = 'none';
+                                
+                                // Stop QR scanner if running
+                                if (qrScanner) {
+                                    qrScanner.stop();
+                                    qrScanner = null;
+                                }
+                            }
+                            
+                            // Reset senior/PWD status
+                            document.getElementById('Input_IsSeniorOrPWD').value = 'false';
+                            document.getElementById('Input_SeniorPwdType').value = '';
+                            document.getElementById('qr-result-label-element').innerText = '';
+                            isSeniorOrPWD = false;
+                            seniorPwdType = '';
+                            
+                            // Clear any type validation errors
+                            clearTypeErrors();
+                        }
+                    });
+                }
+                else if (element.id === 'scan-qr-button' && element.type === 'Button') {
+                    const button = document.createElement('button');
+                    button.type = 'button';
+                    button.className = 'btn';
+                    button.id = 'scan-qr-button-element';
+                    button.style.backgroundColor = element.color;
+                    button.style.color = '#fff';
+                    // Show the button if senior/PWD was previously checked
+                    button.style.display = '@Model.Input?.IsSeniorOrPWD' === 'True' ? 'block' : 'none';
+                    button.innerText = element.text;
+                    
+                    // Add event listener to start QR scanner
+                    button.addEventListener('click', function() {
+                        const qrScannerContainer = document.getElementById('qr-scanner-container-element');
+                        if (qrScannerContainer) {
+                            // Show QR scanner container
+                            qrScannerContainer.style.display = 'block';
+                            
+                            // Initialize and start QR scanner
+                            initQrScanner();
+                        }
+                    });
+                    
+                    elementDiv.appendChild(button);
+                }
+                else if (element.id === 'qr-scanner-container' && element.type === 'ContentPanel') {
+                    const containerDiv = document.createElement('div');
+                    containerDiv.id = 'qr-scanner-container-element';
+                    containerDiv.className = 'qr-scanner-container';
+                    containerDiv.style.border = '1px solid #ddd';
+                    containerDiv.style.borderRadius = '4px';
+                    containerDiv.style.padding = '10px';
+                    containerDiv.style.display = 'none'; // Initially hidden
+                    
+                    // Title for the QR scanner
+                    const title = document.createElement('h5');
+                    title.innerText = element.text;
+                    title.style.marginBottom = '10px';
+                    containerDiv.appendChild(title);
+                    
+                    // Container for the QR reader
+                    const readerDiv = document.createElement('div');
+                    readerDiv.id = 'qr-reader';
+                    readerDiv.style.width = '100%';
+                    readerDiv.style.height = '200px';
+                    containerDiv.appendChild(readerDiv);
+                    
+                    // Close button for the QR scanner
+                    const closeButton = document.createElement('button');
+                    closeButton.type = 'button';
+                    closeButton.className = 'btn btn-secondary mt-2';
+                    closeButton.innerText = 'Cancel';
+                    closeButton.addEventListener('click', function() {
+                        containerDiv.style.display = 'none';
+                        if (qrScanner) {
+                            qrScanner.stop();
+                            qrScanner = null;
+                        }
+                    });
+                    containerDiv.appendChild(closeButton);
+                    
+                    elementDiv.appendChild(containerDiv);
+                }
+                else if (element.id === 'qr-result-label' && element.type === 'Label') {
+                    const resultLabel = document.createElement('div');
+                    resultLabel.id = 'qr-result-label-element';
+                    resultLabel.style.fontWeight = 'bold';
+                    resultLabel.style.color = element.color;
+                    resultLabel.style.marginTop = '10px';
+                    
+                    // Show previous QR scan result if available
+                    if ('@Model.Input?.SeniorPwdType' === 'Senior') {
+                        resultLabel.innerText = '✅ Valid Senior Citizen ID verified';
+                        resultLabel.style.color = 'green';
+                        resultLabel.style.display = 'block';
+                    } else if ('@Model.Input?.SeniorPwdType' === 'PWD') {
+                        resultLabel.innerText = '✅ Valid PWD ID verified';
+                        resultLabel.style.color = 'green';
+                        resultLabel.style.display = 'block';
+                    } else {
+                        resultLabel.style.display = '@Model.Input?.IsSeniorOrPWD' === 'True' ? 'block' : 'none';
+                    }
+                    
+                    elementDiv.appendChild(resultLabel);
+                }
+                else if (element.type === 'Checkbox' && element.id === 'terms-checkbox') {
+                    const checkboxDiv = document.createElement('div');
+                    checkboxDiv.className = 'form-check';
+                    
+                    const input = document.createElement('input');
+                    input.type = 'checkbox';
+                    input.className = 'form-check-input';
+                    input.id = 'Input_AgreeToTerms';
+                    input.name = 'Input.AgreeToTerms';
+                    input.value = "true";
+                    input.required = true;
+                    
+                    // Restore state if needed
+                    try {
+                        if ('@Model.Input?.AgreeToTerms' === 'True') {
+                            input.checked = true;
+                        }
+                    } catch(e) {
+                        // Ignore parsing errors
+                    }
+                    
+                    checkboxDiv.appendChild(input);
+                    
+                    // Add hidden field to ensure false is sent when unchecked
+                    const hiddenInput = document.createElement('input');
+                    hiddenInput.type = 'hidden';
+                    hiddenInput.name = 'Input.AgreeToTerms';
+                    hiddenInput.value = 'false';
+                    checkboxDiv.appendChild(hiddenInput);
+                    
+                    const label = document.createElement('label');
+                    label.innerText = element.text || 'I agree to the Terms and Conditions';
+                    label.className = 'form-check-label';
+                    label.style.color = element.color;
+                    label.setAttribute('for', 'Input_AgreeToTerms');
+                    checkboxDiv.appendChild(label);
+                    
+                    // Add validation span
+                    const validationSpan = document.createElement('span');
+                    validationSpan.className = 'text-danger field-validation-valid';
+                    validationSpan.setAttribute('data-valmsg-for', 'Input.AgreeToTerms');
+                    validationSpan.setAttribute('data-valmsg-replace', 'true');
+                    checkboxDiv.appendChild(validationSpan);
+                    
+                    elementDiv.appendChild(checkboxDiv);
+                }
+                else if (element.type === 'Button' && element.id === 'register-button') {
+                    const button = document.createElement('button');
+                    button.type = 'submit';
+                    button.className = 'btn';
+                    button.style.backgroundColor = element.color;
+                    button.style.color = '#fff';
+                    button.innerText = element.text;
+                    button.style.width = '100%';
+                    button.style.height = '100%';
+                    elementDiv.appendChild(button);
+                } 
+                else if (element.type === 'Label' && element.id === 'login-link') {
+                    const link = document.createElement('a');
+                    link.href = '/Login';
+                    link.innerText = element.text;
+                    link.style.color = element.color;
+                    link.style.textDecoration = 'underline';
+                    elementDiv.appendChild(link);
+                }
+                
+                form.appendChild(elementDiv);
+            });
+            
+            formContainer.appendChild(form);
+            
+            // Clear and update the container
+            container.innerHTML = '';
+            container.appendChild(formContainer);
+            
+            // Display validation errors if any exist
+            displayValidationErrors();
+            
+            // Initialize validation and allow normal form submission
+            if (typeof $.validator !== 'undefined') {
+                $('form').validate();
+            }
+            
+            // Add form submission handler to ensure checkbox state is reflected in hidden field
+            form.addEventListener('submit', function(e) {
+                const seniorCheckbox = document.getElementById('senior-pwd-');
+                if (seniorCheckbox) {
+                    const hiddenField = document.getElementById('Input_IsSeniorOrPWD');
+                    if (hiddenField) {
+                        hiddenField.value = seniorCheckbox.checked ? 'true' : 'false';
+                        console.log('Form submission: Senior checkbox value = ' + hiddenField.value);
+                    }
+                }
+            });
+        }
+        
+        // Function to display validation errors
+        function displayValidationErrors() {
+            // Get error messages from ASP.NET validation
+            const validationSummary = document.querySelector('div.validation-summary-errors');
+            
+            if (validationSummary) {
+                // Check if we have validation errors from a previous submission
+                const hasValidationErrors = document.getElementById('has-validation-errors').value === 'true';
+                
+                // Get all error messages
+                const errorMessages = Array.from(validationSummary.querySelectorAll('ul > li'))
+                    .filter(li => li.textContent.trim() !== '')
+                    .map(li => li.textContent);
+                
+                // Only process errors if we have validation errors flag set
+                if (hasValidationErrors && errorMessages.length > 0) {
+                    // Map of common error patterns to their respective fields
+                    const errorFieldMap = {
+                        'username': 'Input.UserName',
+                        'user name': 'Input.UserName',
+                        'email': 'Input.Email',
+                        'password': 'Input.Password',
+                        'confirm password': 'Input.ConfirmPassword',
+                        'terms': 'Input.AgreeToTerms',
+                        'senior citizen': 'Input.IsSeniorOrPWD',
+                        'pwd': 'Input.IsSeniorOrPWD',
+                        'verify': 'Input.IsSeniorOrPWD'
+                    };
+                    
+                    // Track which errors we've assigned to specific fields
+                    const assignedErrors = [];
+                    
+                    // First, assign field-specific errors
+                    for (const [keyword, fieldName] of Object.entries(errorFieldMap)) {
+                        const relevantErrors = errorMessages.filter(msg => 
+                            msg.toLowerCase().includes(keyword) && !assignedErrors.includes(msg)
+                        );
+                        
+                        if (relevantErrors.length > 0) {
+                            const fieldErrorElement = document.querySelector(`[data-valmsg-for="${fieldName}"]`);
+                            if (fieldErrorElement) {
+                                // Assign the first relevant error to this field
+                                fieldErrorElement.textContent = relevantErrors[0];
+                                fieldErrorElement.className = 'text-danger field-validation-error';
+                                assignedErrors.push(relevantErrors[0]);
+                                
+                                // For senior/pwd related errors, also show near the QR label
+                                if (fieldName === 'Input.IsSeniorOrPWD') {
+                                    const qrResultLabel = document.getElementById('qr-result-label-element');
+                                    if (qrResultLabel) {
+                                        qrResultLabel.innerText = relevantErrors[0];
+                                        qrResultLabel.style.color = 'red';
+                                        qrResultLabel.style.display = 'block';
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Get unassigned errors
+                    const unassignedErrors = errorMessages.filter(msg => !assignedErrors.includes(msg));
+                    
+                    // Display unassigned errors in the error container
+                    if (unassignedErrors.length > 0) {
+                        const errorContainer = document.getElementById('error-message-container');
+                        if (errorContainer) {
+                            const errorList = document.createElement('ul');
+                            errorList.className = 'mb-0';
+                            
+                            unassignedErrors.forEach(message => {
+                                const errorItem = document.createElement('li');
+                                errorItem.textContent = message;
+                                errorList.appendChild(errorItem);
+                            });
+                            
+                            errorContainer.innerHTML = '';
+                            errorContainer.appendChild(errorList);
+                            errorContainer.style.display = 'block';
+                        }
+                    }
+                    
+                    // Handle duplicates for username and email specifically
+                    handleDuplicateNameErrors();
+                }
+            }
+        }
+        
+        // Function to handle duplicate username/email errors which have specific patterns
+        function handleDuplicateNameErrors() {
+            // Look for elements containing "Username" or "Email" in error messages
+            const allErrorElements = document.querySelectorAll('.text-danger');
+            
+            allErrorElements.forEach(element => {
+                const text = element.textContent;
+                
+                // Check for common duplicate username/email error patterns
+                if (text.includes('already taken') || 
+                    text.includes('already exists') || 
+                    text.includes('already used')) {
+                    
+                    // Map to the correct field
+                    if (text.toLowerCase().includes('username')) {
+                        const usernameError = document.querySelector('[data-valmsg-for="Input.UserName"]');
+                        if (usernameError) {
+                            usernameError.textContent = text;
+                            usernameError.className = 'text-danger field-validation-error';
+                        }
+                    } else if (text.toLowerCase().includes('email')) {
+                        const emailError = document.querySelector('[data-valmsg-for="Input.Email"]');
+                        if (emailError) {
+                            emailError.textContent = text;
+                            emailError.className = 'text-danger field-validation-error';
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Enhance input fields to show validation errors on input
+        function setupInlineValidation() {
+            // Add input event listeners to clear errors when user starts typing
+            const inputFields = ['Input_FullName', 'Input_UserName', 'Input_Email', 'Input_Password', 'Input_ConfirmPassword'];
+            
+            inputFields.forEach(fieldId => {
+                const field = document.getElementById(fieldId);
+                if (field) {
+                    field.addEventListener('input', function() {
+                        const fieldName = this.id.replace('_', '.');
+                        const errorSpan = document.querySelector(`[data-valmsg-for="${fieldName}"]`);
+                        if (errorSpan) {
+                            errorSpan.textContent = '';
+                            errorSpan.className = 'text-danger field-validation-valid';
+                        }
+                    });
+                }
+            });
+            
+            // Special case for terms checkbox
+            const termsCheckbox = document.getElementById('Input_AgreeToTerms');
+            if (termsCheckbox) {
+                termsCheckbox.addEventListener('change', function() {
+                    if (this.checked) {
+                        const errorSpan = document.querySelector('[data-valmsg-for="Input.AgreeToTerms"]');
+                        if (errorSpan) {
+                            errorSpan.textContent = '';
+                            errorSpan.className = 'text-danger field-validation-valid';
+                        }
+                    }
+                });
+            }
+            
+            // Special case for senior/pwd checkbox
+            const seniorCheckbox = document.getElementById('senior-pwd-');
+            if (seniorCheckbox) {
+                seniorCheckbox.addEventListener('change', function() {
+                    if (!this.checked) {
+                        const qrResultLabel = document.getElementById('qr-result-label-element');
+                        if (qrResultLabel) {
+                            qrResultLabel.innerText = '';
+                            qrResultLabel.style.display = 'none';
+                        }
+                    }
+                });
+            }
+        }
+        
+        // Function to initialize the QR scanner
+        function initQrScanner() {
+            if (qrScanner) {
+                qrScanner.stop();
+            }
+            
+            const qrReaderElement = document.getElementById('qr-reader');
+            if (!qrReaderElement) return;
+            
+            // Clear previous content
+            qrReaderElement.innerHTML = '';
+            
+            // Create and configure the QR scanner
+            qrScanner = new Html5Qrcode("qr-reader");
+            
+            const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+            
+            qrScanner.start(
+                { facingMode: "environment" }, // Use back camera
+                config,
+                onQrCodeSuccess,
+                onQrCodeError
+            );
+        }
+        
+        // Function called when QR code is successfully scanned
+        function onQrCodeSuccess(decodedText) {
+            // Stop the scanner
+            if (qrScanner) {
+                qrScanner.stop();
+                qrScanner = null;
+            }
+            
+            // Hide the scanner container
+            const qrScannerContainer = document.getElementById('qr-scanner-container-element');
+            if (qrScannerContainer) {
+                qrScannerContainer.style.display = 'none';
+            }
+            
+            // Process the QR code result
+            validateQrCode(decodedText);
+        }
+        
+        // Function to handle QR scanner errors
+        function onQrCodeError(error) {
+            console.error("QR code scanning error:", error);
+        }
+        
+        // Function to validate the QR code content
+        function validateQrCode(qrContent) {
+            const resultLabel = document.getElementById('qr-result-label-element');
+            if (!resultLabel) return;
+            
+            // Clear previous result
+            resultLabel.innerText = '';
+            resultLabel.style.display = 'block';
+            
+            // Decrypt/decode the QR content if needed
+            // For this implementation, we'll just check if it contains "PWD" or "Senior"
+            const containsPWD = qrContent.toLowerCase().includes('pwd');
+            const containsSenior = qrContent.toLowerCase().includes('senior');
+            
+            if (containsPWD || containsSenior) {
+                // Set hidden input value
+                document.getElementById('Input_IsSeniorOrPWD').value = 'true';
+                
+                // Also set the checkbox state for visual feedback
+                const seniorPwdCheckbox = document.getElementById('senior-pwd-');
+                if (seniorPwdCheckbox) {
+                    seniorPwdCheckbox.checked = true;
+                }
+                
+                if (containsPWD) {
+                    seniorPwdType = 'PWD';
+                    document.getElementById('Input_SeniorPwdType').value = 'PWD';
+                    resultLabel.innerText = '✅ Valid PWD ID verified';
+                    resultLabel.style.color = 'green';
+                } else {
+                    seniorPwdType = 'Senior';
+                    document.getElementById('Input_SeniorPwdType').value = 'Senior';
+                    resultLabel.innerText = '✅ Valid Senior Citizen ID verified';
+                    resultLabel.style.color = 'green';
+                }
+                
+                isSeniorOrPWD = true;
+                
+                // Clear any related error messages
+                const errorContainer = document.getElementById('error-message-container');
+                if (errorContainer && errorContainer.style.display === 'block') {
+                    const errorItems = Array.from(errorContainer.querySelectorAll('li'));
+                    const filteredErrors = errorItems.filter(item => 
+                        !item.textContent.includes('Senior Citizen or PWD') && 
+                        !item.textContent.includes('verify') &&
+                        !item.textContent.includes('Type field')
+                    );
+                    
+                    if (filteredErrors.length > 0) {
+                        const errorList = document.createElement('ul');
+                        errorList.className = 'mb-0';
+                        
+                        filteredErrors.forEach(item => {
+                            const errorItem = document.createElement('li');
+                            errorItem.textContent = item.textContent;
+                            errorList.appendChild(errorItem);
+                        });
+                        
+                        errorContainer.innerHTML = '';
+                        errorContainer.appendChild(errorList);
+                    } else {
+                        errorContainer.style.display = 'none';
+                    }
+                }
+                
+                // Clear any senior/pwd validation messages
+                const seniorPwdError = document.querySelector('[data-valmsg-for="Input.IsSeniorOrPWD"]');
+                if (seniorPwdError) {
+                    seniorPwdError.textContent = '';
+                    seniorPwdError.className = 'text-danger field-validation-valid';
+                }
+                
+                // Also clear any Type field validation errors
+                const typeFieldError = document.querySelector('[data-valmsg-for="Input.SeniorPwdType"]');
+                if (typeFieldError) {
+                    typeFieldError.textContent = '';
+                    typeFieldError.className = 'text-danger field-validation-valid';
+                }
+                
+                // Remove any "Type field is required" errors from the top error list
+                const errorSummary = document.querySelector('.validation-summary-errors ul');
+                if (errorSummary) {
+                    const errorItems = Array.from(errorSummary.querySelectorAll('li'));
+                    errorItems.forEach(item => {
+                        if (item.textContent.includes('Type field')) {
+                            item.remove();
+                        }
+                    });
+                }
+            } else {
+                // Invalid QR code
+                document.getElementById('Input_IsSeniorOrPWD').value = 'false';
+                document.getElementById('Input_SeniorPwdType').value = '';
+                resultLabel.innerText = '❌ Invalid ID. QR code must contain PWD or Senior identification.';
+                resultLabel.style.color = 'red';
+                isSeniorOrPWD = false;
+                seniorPwdType = '';
+            }
+        }
+        
+        // Flag to track if form was submitted
+        let formSubmitted = false;
+        
+        // Add an event listener to the form submission
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize the inline validation
+            setupInlineValidation();
+            
+            // Add submit event listener to handle form validation display
+            document.addEventListener('submit', function(e) {
+                if (e.target.tagName === 'FORM') {
+                    formSubmitted = true;
+                    
+                    // Validate Senior/PWD status if checked
+                    const seniorPwdCheckbox = document.getElementById('senior-pwd-');
+                    const seniorPwdType = document.getElementById('Input_SeniorPwdType').value;
+                    
+                    if (seniorPwdCheckbox && seniorPwdCheckbox.checked && !seniorPwdType) {
+                        e.preventDefault();
+                        
+                        // Display error message
+                        const errorContainer = document.getElementById('error-message-container');
+                        if (errorContainer) {
+                            errorContainer.innerHTML = '<ul class="mb-0"><li>You must verify your Senior Citizen or PWD status through QR code scanning.</li></ul>';
+                            errorContainer.style.display = 'block';
+                        }
+                        
+                        // Also display inline error
+                        const qrResultLabel = document.getElementById('qr-result-label-element');
+                        if (qrResultLabel) {
+                            qrResultLabel.innerText = 'You must complete QR verification.';
+                            qrResultLabel.style.color = 'red';
+                            qrResultLabel.style.display = 'block';
+                        }
+                    }
+                }
+            });
+        });
+
+        // Function to clear Type field validation errors
+        function clearTypeErrors() {
+            // Clear from the top validation summary
+            const validationSummary = document.querySelector('.validation-summary-errors ul');
+            if (validationSummary) {
+                const items = validationSummary.querySelectorAll('li');
+                items.forEach(item => {
+                    if (item.textContent.includes('Type field')) {
+                        item.remove();
+                    }
+                });
+                
+                // If no errors remain, hide the summary
+                if (validationSummary.querySelectorAll('li').length === 0) {
+                    const container = document.querySelector('.validation-summary-errors');
+                    if (container) {
+                        container.style.display = 'none';
+                    }
+                }
+            }
+            
+            // Clear inline validation messages
+            const typeValidation = document.querySelector('[data-valmsg-for="Input.SeniorPwdType"]');
+            if (typeValidation) {
+                typeValidation.textContent = '';
+                typeValidation.className = 'text-danger field-validation-valid';
+            }
+        }
+    </script>
+
+    <partial name="_ValidationScriptsPartial" />
+} 

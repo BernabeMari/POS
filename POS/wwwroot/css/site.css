@@ -1,0 +1,252 @@
+html {
+  font-size: 14px;
+}
+
+@media (min-width: 768px) {
+  html {
+    font-size: 16px;
+  }
+}
+
+.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
+  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
+}
+
+html {
+  position: relative;
+  min-height: 100%;
+}
+
+body {
+  margin-bottom: 60px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.form-floating > .form-control-plaintext::placeholder, .form-floating > .form-control::placeholder {
+  color: var(--bs-secondary-color);
+  text-align: end;
+}
+
+.form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
+  text-align: start;
+}
+
+/* Add more custom styles */
+
+/* Page transitions */
+.page-transition {
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Design canvas for Admin Page Editor */
+#designCanvas {
+  min-height: 600px;
+  position: relative;
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+  overflow: hidden;
+}
+
+/* Resize handles styling */
+.resize-handle {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background-color: #007bff;
+  border: 1px solid #fff;
+  z-index: 100;
+}
+
+/* Position the resize handles */
+.resize-n {
+  top: -5px;
+  left: 50%;
+  transform: translateX(-50%);
+  cursor: n-resize;
+}
+
+.resize-e {
+  top: 50%;
+  right: -5px;
+  transform: translateY(-50%);
+  cursor: e-resize;
+}
+
+.resize-s {
+  bottom: -5px;
+  left: 50%;
+  transform: translateX(-50%);
+  cursor: s-resize;
+}
+
+.resize-w {
+  top: 50%;
+  left: -5px;
+  transform: translateY(-50%);
+  cursor: w-resize;
+}
+
+.resize-ne {
+  top: -5px;
+  right: -5px;
+  cursor: ne-resize;
+}
+
+.resize-se {
+  bottom: -5px;
+  right: -5px;
+  cursor: se-resize;
+}
+
+.resize-sw {
+  bottom: -5px;
+  left: -5px;
+  cursor: sw-resize;
+}
+
+.resize-nw {
+  top: -5px;
+  left: -5px;
+  cursor: nw-resize;
+}
+
+/* Ensure elements are properly visible when canvas is zoomed */
+.element-item {
+  box-shadow: 0 0 5px rgba(0,0,0,0.2);
+  transition: box-shadow 0.2s ease;
+}
+
+.element-item:hover {
+  box-shadow: 0 0 8px rgba(0,0,0,0.4);
+}
+
+/* When resizing, add resizing class to body */
+body.resizing {
+  cursor: inherit !important;
+  user-select: none;
+}
+
+/* Admin UI customization */
+.admin-sidebar {
+  min-height: calc(100vh - 120px);
+  border-right: 1px solid #dee2e6;
+}
+
+.admin-content {
+  padding: 20px;
+}
+
+/* Login and Register pages */
+.auth-card {
+  max-width: 500px;
+  margin: 2rem auto;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.auth-card .card-header {
+  background-color: #f8f9fa;
+  border-bottom: none;
+  padding: 1.5rem 1.5rem 0.5rem;
+}
+
+.auth-card .card-body {
+  padding: 1.5rem;
+}
+
+/* Animation classes */
+.data-animate {
+  visibility: hidden;
+}
+
+/* Change to match the updated JavaScript selector */
+[data-animate] {
+  visibility: hidden;
+}
+
+.animate__animated {
+  visibility: visible;
+  animation-duration: 1s;
+}
+
+.animate__fadeIn {
+  animation-name: fadeIn;
+}
+
+.animate__slideInUp {
+  animation-name: slideInUp;
+}
+
+@keyframes slideInUp {
+  from { transform: translateY(50px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* Product cards for dashboard */
+.product-card {
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border: none;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.product-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+.product-card .card-img-top {
+    height: 200px;
+    object-fit: cover;
+}
+
+.product-card .card-title {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.product-card .card-text {
+    color: #6c757d;
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+    min-height: 2.7rem; /* For consistent card heights */
+}
+
+.product-card .btn {
+    border-radius: 5px;
+    padding: 0.4rem 0.75rem;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+}
+
+.product-card .btn:hover {
+    transform: scale(1.05);
+}
+
+.badge {
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 0.35em 0.65em;
+}
+
+/* My Orders page styles */
+.order-table thead th {
+    background-color: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.order-table tbody tr:hover {
+    background-color: #f0f8ff;
+}
+
+.order-img {
+    width: 50px;
+    height: 50px;
+    object-fit: cover;
+    border-radius: 4px;
+}

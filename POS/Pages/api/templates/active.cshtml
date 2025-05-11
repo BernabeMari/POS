@@ -1,0 +1,8 @@
+@page
+@model POS.Pages.api.templates.ActiveModel
+@{
+    Layout = null;
+    Response.ContentType = "application/json";
+}
+
+@Json.Serialize(Model.Template) 

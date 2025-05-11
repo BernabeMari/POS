@@ -1,0 +1,134 @@
+@{
+    ViewData["Title"] = "Request Discount";
+    Layout = "_Layout";
+    
+    var order = ViewBag.Order as POS.Models.Order;
+    var user = ViewBag.User as POS.Models.ApplicationUser;
+    var discountOptions = ViewBag.DiscountOptions as List<string>;
+    var cartTotal = ViewBag.CartTotal;
+    var cartItems = ViewBag.CartItems as IEnumerable<POS.Models.CartItem>;
+}
+
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Special Discount Available</h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle-fill me-2"></i>
+                        You are eligible for a 20% discount! Please select your discount type below.
+                    </div>
+                    
+                    <div class="mb-4">
+                        <h5>Cart Summary</h5>
+                        <div class="d-flex justify-content-between mt-2">
+                            <span>Order Reference #@order.Id</span>
+                            <span>@DateTime.Now.ToString("MM/dd/yyyy h:mm tt")</span>
+                        </div>
+                        
+                        @if (cartItems != null && cartItems.Any())
+                        {
+                            <div class="table-responsive mt-3">
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Item</th>
+                                            <th>Price</th>
+                                            <th>Qty</th>
+                                            <th class="text-end">Total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var item in cartItems)
+                                        {
+                                            <tr>
+                                                <td>@item.ProductName</td>
+                                                <td>@item.Price.ToString("C")</td>
+                                                <td>@item.Quantity</td>
+                                                <td class="text-end">@((item.Price * item.Quantity).ToString("C"))</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            @* Calculate total directly from cart items as a fallback *@
+                            decimal calculatedTotal = cartItems.Sum(i => i.Price * i.Quantity);
+                            
+                            <div class="d-flex justify-content-between mt-3">
+                                <span>Total Cart Value:</span>
+                                <span>@(cartTotal > 0 ? cartTotal.ToString("C") : calculatedTotal.ToString("C"))</span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span>With 20% Discount:</span>
+                                <span class="text-success fw-bold">@(((cartTotal > 0 ? cartTotal : calculatedTotal) * 0.8m).ToString("C"))</span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span>You Save:</span>
+                                <span class="text-danger fw-bold">@(((cartTotal > 0 ? cartTotal : calculatedTotal) * 0.2m).ToString("C"))</span>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="alert alert-warning mt-3">
+                                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                                Your cart is currently empty. Please add items to your cart before proceeding.
+                            </div>
+                        }
+                    </div>
+                    
+                    <h5>Discount Options</h5>
+                    <form method="post" action="@Url.Action("RequestDiscount", "Discount")">
+                        <input type="hidden" name="orderId" value="@order.Id" />
+                        
+                        <div class="form-group mb-3">
+                            <label class="form-label">Select Discount Type:</label>
+                            
+                            @if (discountOptions.Contains("SeniorCitizen"))
+                            {
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="discountType" id="seniorCitizen" value="SeniorCitizen" checked>
+                                    <label class="form-check-label" for="seniorCitizen">
+                                        Senior Citizen Discount (20%)
+                                    </label>
+                                </div>
+                            }
+                            
+                            @if (discountOptions.Contains("PWD"))
+                            {
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="discountType" id="pwd" value="PWD" @(discountOptions.Contains("SeniorCitizen") ? "" : "checked")>
+                                    <label class="form-check-label" for="pwd">
+                                        PWD Discount (20%)
+                                    </label>
+                                </div>
+                            }
+                        </div>
+                        
+                        <div class="alert alert-warning">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                            <strong>Important:</strong> The manager will need to verify your eligibility before the discount is applied. This may take a moment.
+                        </div>
+                        
+                        <div class="d-flex justify-content-between mt-4">
+                            <button type="submit" class="btn btn-primary">
+                                Request Discount
+                            </button>
+                        </div>
+                    </form>
+                    
+                    <!-- Separate form for skipping discount -->
+                    <form method="post" action="@Url.Action("CreatePayment", "Payment")" class="mt-3">
+                        <input type="hidden" name="orderId" value="@order.Id" />
+                        <button type="submit" class="btn btn-outline-secondary">
+                            Skip Discount and Pay Full Price
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div> 

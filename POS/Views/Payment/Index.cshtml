@@ -1,0 +1,176 @@
+@{
+    ViewData["Title"] = "Payment";
+}
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4>Payment Options</h4>
+                </div>
+                <div class="card-body">
+                    @if (TempData["ErrorMessage"] != null)
+                    {
+                        <div class="alert alert-danger">
+                            @TempData["ErrorMessage"]
+                        </div>
+                    }
+
+                    <h5 class="mb-4">Select a payment method:</h5>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <div class="card h-100">
+                                <div class="card-body text-center">
+                                    <img src="https://www.paypalobjects.com/webstatic/mktg/logo/pp_cc_mark_111x69.jpg" 
+                                         alt="PayPal" class="img-fluid mb-3" style="max-height: 60px;">
+                                    <h5>PayPal</h5>
+                                    <p class="text-muted">Pay with your PayPal account or credit card</p>
+                                    <form asp-controller="Payment" asp-action="CreatePayment" method="post" id="paypalForm">
+                                        <input type="hidden" name="orderId" value="@ViewBag.OrderId" />
+                                        <button type="button" class="btn btn-primary" id="paypalButton">
+                                            <i class="bi bi-paypal"></i> Pay with PayPal
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Payment Processing Overlay -->
+<div id="paymentOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background-color:rgba(0,0,0,0.6); z-index:9999;">
+    <div style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); text-align:center; color:white;">
+        <div class="spinner-border text-light mb-3" role="status" style="width: 3rem; height: 3rem;">
+            <span class="visually-hidden">Processing payment...</span>
+        </div>
+        <h4>Processing your payment</h4>
+        <p>Please wait while we connect to PayPal...</p>
+        <p class="small">Do not close this window or navigate away</p>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Function to prevent navigation during payment
+        function preventNavigation(event) {
+            event.preventDefault();
+            // Chrome requires returnValue to be set
+            event.returnValue = '';
+            return '';
+        }
+        
+        // Function to enable navigation block
+        function enableNavigationBlock() {
+            const overlay = document.getElementById('paymentOverlay');
+            if (overlay) {
+                overlay.style.display = 'block';
+            }
+            
+            // Disable browser navigation
+            window.addEventListener('beforeunload', preventNavigation);
+            
+            // Disable all navigation links and buttons
+            const allLinks = document.querySelectorAll('a:not([target="_blank"])');
+            allLinks.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    return false;
+                });
+            });
+            
+            // Store navigation state in session storage to persist across page loads
+            sessionStorage.setItem('paymentInProgress', 'true');
+        }
+        
+        // Function to handle PayPal payment initiation
+        async function initiatePayPalPayment() {
+            // First show the overlay
+            enableNavigationBlock();
+            
+            try {
+                const form = document.getElementById('paypalForm');
+                const formData = new FormData(form);
+                
+                // Submit the form using fetch
+                const response = await fetch(form.action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    redirect: 'manual' // Don't automatically follow redirects
+                });
+                
+                // If we get a redirect response, extract the Location header
+                if (response.type === 'opaqueredirect' || (response.status >= 300 && response.status < 400)) {
+                    // For security reasons, browsers don't expose the Location header in JavaScript
+                    // We'll need to handle this on the server side
+                    
+                    // Make a second request to get the PayPal URL
+                    const redirectResponse = await fetch('/Payment/GetPayPalRedirectUrl', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    const data = await redirectResponse.json();
+                    
+                    if (data.redirectUrl) {
+                        // Redirect to PayPal
+                        window.location.href = data.redirectUrl;
+                    } else {
+                        // Handle error
+                        console.error('Failed to get PayPal redirect URL');
+                        disableNavigationBlock();
+                    }
+                } else {
+                    // Handle unexpected response
+                    const errorData = await response.text();
+                    console.error('Unexpected response:', errorData);
+                    disableNavigationBlock();
+                }
+            } catch (error) {
+                console.error('Error initiating PayPal payment:', error);
+                disableNavigationBlock();
+            }
+        }
+        
+        // Function to disable navigation block
+        function disableNavigationBlock() {
+            // Remove navigation lock
+            window.removeEventListener('beforeunload', preventNavigation);
+            
+            // Clear payment in progress flag
+            sessionStorage.removeItem('paymentInProgress');
+            
+            // Hide overlay
+            const overlay = document.getElementById('paymentOverlay');
+            if (overlay) {
+                overlay.style.display = 'none';
+            }
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            const paypalButton = document.getElementById('paypalButton');
+            
+            // Check if payment was in progress but was interrupted
+            if (sessionStorage.getItem('paymentInProgress') === 'true') {
+                // If we're on the payment page again, clear the flag
+                sessionStorage.removeItem('paymentInProgress');
+            }
+            
+            // Attach click handler to the PayPal button
+            if (paypalButton) {
+                paypalButton.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    initiatePayPalPayment();
+                });
+            }
+        });
+    </script>
+} 

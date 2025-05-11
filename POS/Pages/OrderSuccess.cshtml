@@ -1,0 +1,87 @@
+@page "{orderId:int}"
+@model POS.Pages.OrderSuccessModel
+@using POS.Models
+@{
+    ViewData["Title"] = "Order Placed Successfully";
+}
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-sm border-0">
+                <div class="card-body text-center p-5">
+                    <div class="mb-4">
+                        <i class="bi bi-check-circle-fill text-success" style="font-size: 5rem;"></i>
+                    </div>
+                    <h1 class="card-title mb-4">Order Placed Successfully!</h1>
+                    <p class="card-text fs-5 mb-4">Thank you for your order. Your order has been received and is being processed.</p>
+                    
+                    <div class="alert alert-light border mb-4">
+                        <div class="row">
+                            <div class="col-md-6 text-md-start">
+                                <p class="mb-1"><strong>Order ID:</strong> #@Model.Order.Id</p>
+                                <p class="mb-1"><strong>Date:</strong> @Model.Order.CreatedAt.ToString("MMM dd, yyyy HH:mm")</p>
+                                <p class="mb-0"><strong>Status:</strong> 
+                                    <span class="badge bg-warning text-dark">@Model.Order.Status</span>
+                                </p>
+                            </div>
+                            <div class="col-md-6 text-md-end">
+                                <p class="mb-1"><strong>Total:</strong> $@Model.Order.TotalPrice.ToString("0.00")</p>
+                                <p class="mb-1"><strong>Quantity:</strong> @Model.Order.Quantity</p>
+                                <p class="mb-0"><strong>Product:</strong> @Model.Order.ProductName</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    @if (Model.Order.Status == OrderStatus.Pending)
+                    {
+                        <div class="alert alert-info mt-4">
+                            <h5 class="alert-heading">Payment Required</h5>
+                            <p>Please complete payment to process your order.</p>
+                            <hr>
+                            <form action="/Payment/CreatePayment" method="post">
+                                <input type="hidden" name="orderId" value="@Model.Order.Id" />
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-paypal"></i> Pay with PayPal
+                                </button>
+                            </form>
+                        </div>
+                    }
+                    
+                    <div class="row mt-4">
+                        <div class="col-md-6 mb-3 mb-md-0">
+                            <a href="/Dashboard" class="btn btn-outline-primary w-100">
+                                <i class="bi bi-shop"></i> Continue Shopping
+                            </a>
+                        </div>
+                        <div class="col-md-6">
+                            <a href="/MyOrders" class="btn btn-primary w-100">
+                                <i class="bi bi-list-ul"></i> View All Orders
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Add an animation to the success icon
+        document.addEventListener('DOMContentLoaded', function() {
+            const successIcon = document.querySelector('.bi-check-circle-fill');
+            
+            successIcon.style.transform = 'scale(0)';
+            successIcon.style.transition = 'transform 0.5s ease';
+            
+            setTimeout(() => {
+                successIcon.style.transform = 'scale(1.2)';
+                
+                setTimeout(() => {
+                    successIcon.style.transform = 'scale(1)';
+                }, 200);
+            }, 300);
+        });
+    </script>
+} 
