@@ -1,0 +1,76 @@
+@page
+@model POS.Areas.Admin.Pages.IndexModel
+@{
+    ViewData["Title"] = "Admin Dashboard";
+}
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-12 mb-4">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Admin Dashboard</h4>
+                </div>
+                <div class="card-body">
+                    <p>Welcome to the admin dashboard. Here you can manage page templates and user accounts.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5>Page Templates</h5>
+                </div>
+                <div class="card-body">
+                    <p>Customize the appearance and layout of user-facing pages.</p>
+                    <a asp-page="/PageEditor" class="btn btn-primary">Page Editor</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5>User Management</h5>
+                </div>
+                <div class="card-body">
+                    <p>View and manage user accounts.</p>
+                    <a asp-page="/UserManagement" class="btn btn-primary">Manage Users</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5>System Settings</h5>
+                </div>
+                <div class="card-body">
+                    <p>Configure system-wide settings and options.</p>
+                    <div class="d-flex gap-2">
+                        <a asp-page="/LoginSettings" class="btn btn-primary">Login Settings</a>
+                        <a asp-page="/SecuritySettings" class="btn btn-primary">Security Settings</a>
+                        <a href="/Admin/EncryptionSettings" class="btn btn-primary">Encryption Settings</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5>Activity Logs</h5>
+                </div>
+                <div class="card-body">
+                    <p>View system activity and user login history.</p>
+                    <a asp-page="/ActivityLogs" class="btn btn-primary">View Logs</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div> 

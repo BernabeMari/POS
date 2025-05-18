@@ -1,0 +1,300 @@
+@page
+@model POS.Pages.TestOrdersModel
+@{
+    ViewData["Title"] = "Test Orders";
+}
+
+<div class="container mt-4">
+    <h1>Test Orders</h1>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5>Create Test Order</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="create-order-form">
+                        <div class="mb-3">
+                            <label for="productSelect" class="form-label">Select Product</label>
+                            <select class="form-select" id="productSelect">
+                                <option value="0" selected>-- Custom Product (Manual Entry) --</option>
+                            </select>
+                            <small class="form-text text-muted">Select a product or use manual entry below</small>
+                        </div>
+                        <input type="hidden" id="productId" name="ProductId" value="0">
+                        <div class="mb-3">
+                            <label for="productName" class="form-label">Product Name</label>
+                            <input type="text" class="form-control" id="productName" name="ProductName" value="Test Product" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="productImageUrl" class="form-label">Image URL</label>
+                            <input type="text" class="form-control" id="productImageUrl" name="ProductImageUrl" value="https://via.placeholder.com/150">
+                        </div>
+                        <div class="mb-3">
+                            <label for="productImageDescription" class="form-label">Image Description</label>
+                            <input type="text" class="form-control" id="productImageDescription" name="ProductImageDescription" value="Sample product image">
+                        </div>
+                        <div class="mb-3">
+                            <label for="price" class="form-label">Price</label>
+                            <input type="number" class="form-control" id="price" name="Price" value="9.99" min="0" step="0.01" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="quantity" class="form-label">Quantity</label>
+                            <input type="number" class="form-control" id="quantity" name="Quantity" value="1" min="1" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="notes" class="form-label">Notes</label>
+                            <textarea class="form-control" id="notes" name="Notes" rows="3">Test order</textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Create Order</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">My Orders</h5>
+                    <button id="refresh-orders" class="btn btn-sm btn-outline-primary">Refresh</button>
+                </div>
+                <div class="card-body" id="orders-container">
+                    <p>Loading orders...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">All Orders (API Response)</h5>
+                    <button id="refresh-all-orders" class="btn btn-sm btn-outline-primary">Refresh</button>
+                </div>
+                <div class="card-body">
+                    <div id="all-orders-container">
+                        <p>Click Refresh to view all orders</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            loadUserOrders();
+            loadAvailableProducts();
+            
+            // Set up form submission
+            document.getElementById('create-order-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                createOrder();
+            });
+            
+            // Set up refresh buttons
+            document.getElementById('refresh-orders').addEventListener('click', loadUserOrders);
+            document.getElementById('refresh-all-orders').addEventListener('click', loadAllOrders);
+            
+            // Set up product selector change event
+            document.getElementById('productSelect').addEventListener('change', function() {
+                const selectedProductId = parseInt(this.value);
+                document.getElementById('productId').value = selectedProductId;
+                
+                // If it's a custom product (id=0), enable all fields but don't auto-populate
+                if (selectedProductId === 0) {
+                    enableProductFormFields(true);
+                    return;
+                }
+                
+                // Find the selected product in the products array
+                const selectedProduct = window.availableProducts.find(p => p.id === selectedProductId);
+                if (selectedProduct) {
+                    // Populate form fields with product details
+                    document.getElementById('productName').value = selectedProduct.name;
+                    document.getElementById('productImageUrl').value = selectedProduct.imageUrl;
+                    document.getElementById('productImageDescription').value = selectedProduct.imageDescription || '';
+                    document.getElementById('price').value = selectedProduct.price;
+                    
+                    // Disable fields that should come from the product
+                    enableProductFormFields(false);
+                }
+            });
+        });
+        
+        // Function to load available products
+        function loadAvailableProducts() {
+            fetch('/api/products/available')
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Available products:', data);
+                    
+                    // Store products in a global variable for later use
+                    window.availableProducts = data;
+                    
+                    // Populate the dropdown
+                    const selectElement = document.getElementById('productSelect');
+                    
+                    // Clear existing options except the first one
+                    while (selectElement.options.length > 1) {
+                        selectElement.remove(1);
+                    }
+                    
+                    // Add products to dropdown
+                    data.forEach(product => {
+                        const option = document.createElement('option');
+                        option.value = product.id;
+                        option.textContent = `${product.name} - $${product.price.toFixed(2)}`;
+                        selectElement.appendChild(option);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error loading products:', error);
+                });
+        }
+        
+        // Function to enable/disable product form fields
+        function enableProductFormFields(enable) {
+            const fields = ['productName', 'productImageUrl', 'productImageDescription', 'price'];
+            fields.forEach(fieldId => {
+                document.getElementById(fieldId).readOnly = !enable;
+            });
+        }
+        
+        function createOrder() {
+            const form = document.getElementById('create-order-form');
+            const formData = new FormData(form);
+            const orderData = {};
+            
+            for (const [key, value] of formData.entries()) {
+                // Convert productId to number
+                if (key === 'productId' || key === 'ProductId') {
+                    orderData['productId'] = parseInt(value);
+                } else {
+                    orderData[key.charAt(0).toLowerCase() + key.slice(1)] = value;
+                }
+            }
+            
+            // Get the token
+            const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
+            
+            fetch('/api/orders/create', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': token
+                },
+                body: JSON.stringify(orderData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Order created:', data);
+                
+                if (data.success) {
+                    // If order created successfully, redirect to payment
+                    if (data.orderId) {
+                        // Create a form and submit to payment controller
+                        const form = document.createElement('form');
+                        form.method = 'POST';
+                        form.action = '/Payment/CreatePayment';
+                        
+                        const orderIdInput = document.createElement('input');
+                        orderIdInput.type = 'hidden';
+                        orderIdInput.name = 'orderId';
+                        orderIdInput.value = data.orderId;
+                        
+                        form.appendChild(orderIdInput);
+                        document.body.appendChild(form);
+                        form.submit();
+                    } else {
+                        // Show alert as before
+                        alert(`Order #${data.orderId} created successfully!`);
+                        loadUserOrders();
+                        loadAllOrders();
+                    }
+                } else {
+                    alert(`Error: ${data.message}`);
+                }
+            })
+            .catch(error => {
+                console.error('Error creating order:', error);
+                alert('Error creating order: ' + error.message);
+            });
+        }
+        
+        function loadUserOrders() {
+            const container = document.getElementById('orders-container');
+            container.innerHTML = '<p>Loading orders...</p>';
+            
+            fetch('/api/orders/user')
+                .then(response => response.json())
+                .then(data => {
+                    console.log('User orders:', data);
+                    
+                    if (data && data.length > 0) {
+                        let html = '<div class="table-responsive"><table class="table table-sm table-striped">';
+                        html += '<thead><tr><th>ID</th><th>Product</th><th>Image</th><th>Price</th><th>Qty</th><th>Total</th><th>Status</th><th>Date</th></tr></thead><tbody>';
+                        
+                        data.forEach(order => {
+                            html += `<tr>
+                                <td>${order.id}</td>
+                                <td>${order.productName}</td>
+                                <td>
+                                    <img src="${order.productImageUrl}" alt="${order.productImageDescription || 'Product image'}" class="img-thumbnail" style="max-width: 50px;">
+                                    <span class="d-none">${order.productImageDescription || ''}</span>
+                                </td>
+                                <td>$${order.price.toFixed(2)}</td>
+                                <td>${order.quantity}</td>
+                                <td>$${order.totalPrice ? order.totalPrice.toFixed(2) : (order.price * order.quantity).toFixed(2)}</td>
+                                <td><span class="badge bg-${getStatusBadgeColor(order.status)}">${order.status}</span></td>
+                                <td>${new Date(order.createdAt).toLocaleString()}</td>
+                            </tr>`;
+                        });
+                        
+                        html += '</tbody></table></div>';
+                        container.innerHTML = html;
+                    } else {
+                        container.innerHTML = '<p>No orders found.</p>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading orders:', error);
+                    container.innerHTML = `<div class="alert alert-danger">Error loading orders: ${error.message}</div>`;
+                });
+        }
+        
+        function loadAllOrders() {
+            const container = document.getElementById('all-orders-container');
+            container.innerHTML = '<p>Loading all orders...</p>';
+            
+            fetch('/api/orders/new')
+                .then(response => response.json())
+                .then(data => {
+                    console.log('All orders raw data:', data);
+                    
+                    // Display the raw API response
+                    container.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+                })
+                .catch(error => {
+                    console.error('Error loading all orders:', error);
+                    container.innerHTML = `<div class="alert alert-danger">Error loading orders: ${error.message}</div>`;
+                });
+        }
+        
+        function getStatusBadgeColor(status) {
+            switch(status) {
+                case 'Completed': return 'success';
+                case 'Processing': return 'primary';
+                case 'Cancelled': return 'danger';
+                case 'Pending': return 'warning';
+                case 'OrderReceived': return 'primary';
+                case 'OnGoing': return 'warning';
+                case 'ReadyToServe': return 'info';
+                default: return 'secondary';
+            }
+        }
+    </script>
+} 

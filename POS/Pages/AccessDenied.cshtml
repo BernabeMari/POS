@@ -1,0 +1,36 @@
+@page
+@{
+    ViewData["Title"] = "Access Denied";
+}
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h4 class="mb-0"><i class="bi bi-exclamation-triangle-fill me-2"></i>Access Denied</h4>
+                </div>
+                <div class="card-body">
+                    <h5 class="card-title">You don't have permission to access this resource</h5>
+                    <p class="card-text">
+                        You don't have the necessary permissions to view the page you requested.
+                        This might be because:
+                    </p>
+                    <ul>
+                        <li>Your account doesn't have the required role or position</li>
+                        <li>You need to log in with a different account</li>
+                        <li>You need additional authorization for this action</li>
+                    </ul>
+                    <div class="d-grid gap-2">
+                        <a href="javascript:history.back()" class="btn btn-outline-primary">
+                            <i class="bi bi-arrow-left me-2"></i>Go Back
+                        </a>
+                        <a href="/" class="btn btn-primary">
+                            <i class="bi bi-house-door me-2"></i>Go to Homepage
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div> 

@@ -1,0 +1,162 @@
+@{
+    ViewData["Title"] = "Discount Approval Pending";
+    Layout = "_Layout";
+    
+    var order = ViewBag.Order as POS.Models.Order;
+    var cartTotal = ViewBag.CartTotal;
+    var cartItems = ViewBag.CartItems as IEnumerable<POS.Models.CartItem>;
+}
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">Waiting for Discount Approval</h5>
+                </div>
+                <div class="card-body text-center">
+                    <div class="mb-4">
+                        <i class="bi bi-hourglass-split display-1 text-warning"></i>
+                    </div>
+                    
+                    <h4 class="mb-3">Your @order.DiscountType Discount is Pending Approval</h4>
+                    
+                    <p class="lead">
+                        Please wait while a manager verifies your eligibility. This may take a few moments.
+                    </p>
+                    
+                    <div class="alert alert-info mt-4">
+                        <div class="d-flex align-items-center">
+                            <div class="spinner-border text-primary me-3" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <div class="text-start">
+                                <strong>What's happening now?</strong><br>
+                                The cashier is contacting the manager to verify your status. Once approved, a 20% discount will be applied to your entire cart.
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card mb-4">
+                        <div class="card-body">
+                            <h5 class="card-title">Cart Summary</h5>
+                            <div class="d-flex justify-content-between">
+                                <span>Order Reference #@order.Id</span>
+                                <span>@DateTime.Now.ToString("MM/dd/yyyy h:mm tt")</span>
+                            </div>
+                            
+                            @if (cartItems != null && cartItems.Any())
+                            {
+                                <div class="table-responsive mt-3">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>Item</th>
+                                                <th>Price</th>
+                                                <th>Qty</th>
+                                                <th class="text-end">Total</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var item in cartItems)
+                                            {
+                                                <tr>
+                                                    <td>@item.ProductName</td>
+                                                    <td>@item.Price.ToString("C")</td>
+                                                    <td>@item.Quantity</td>
+                                                    <td class="text-end">@((item.Price * item.Quantity).ToString("C"))</td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                                
+                                @* Calculate total directly from cart items as a fallback *@
+                                decimal calculatedTotal = cartItems.Sum(i => i.Price * i.Quantity);
+                                
+                                <div class="d-flex justify-content-between mt-3">
+                                    <span>Total Cart Value:</span>
+                                    <span>@(cartTotal > 0 ? cartTotal.ToString("C") : calculatedTotal.ToString("C"))</span>
+                                </div>
+                                <div class="d-flex justify-content-between">
+                                    <span>With 20% Discount:</span>
+                                    <span class="text-success fw-bold">@(((cartTotal > 0 ? cartTotal : calculatedTotal) * 0.8m).ToString("C"))</span>
+                                </div>
+                                <div class="d-flex justify-content-between">
+                                    <span>You Save:</span>
+                                    <span class="text-danger fw-bold">@(((cartTotal > 0 ? cartTotal : calculatedTotal) * 0.2m).ToString("C"))</span>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="alert alert-warning mt-3">
+                                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                                    Your cart is currently empty. Please add items to your cart before proceeding.
+                                </div>
+                            }
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4">
+                        <p class="mb-1">This page will automatically refresh to check for approval status.</p>
+                        <form id="skipDiscountForm" method="post" action="@Url.Action("CreatePayment", "Payment")">
+                            <input type="hidden" name="orderId" value="@order.Id" />
+                            <button type="submit" class="btn btn-outline-secondary">Skip Discount</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden form for submitting payment after discount approval -->
+<form id="paymentForm" method="post" action="@Url.Action("CreatePayment", "Payment")" style="display:none;">
+    <input type="hidden" name="orderId" value="@order.Id" />
+    @Html.AntiForgeryToken()
+</form>
+
+<!-- Add a hidden anti-forgery token for AJAX requests -->
+@Html.AntiForgeryToken()
+
+@section Scripts {
+    <script>
+        $(function() {
+            // Add anti-forgery token to AJAX requests
+            $.ajaxSetup({
+                headers: {
+                    'X-CSRF-TOKEN': $('input:hidden[name="__RequestVerificationToken"]').val()
+                },
+                xhrFields: {
+                    withCredentials: true
+                }
+            });
+            
+            // Check discount status every 5 seconds
+            setInterval(checkDiscountStatus, 5000);
+            
+            function checkDiscountStatus() {
+                // Use POST instead of GET to better preserve session
+                $.ajax({
+                    url: '/Discount/CheckDiscountStatus',
+                    type: 'POST',
+                    data: { orderId: @order.Id },
+                    success: function(response) {
+                        // If discount is approved, submit the payment form
+                        if (response.success && response.isDiscountApproved) {
+                            $('#paymentForm').submit();
+                        }
+                        
+                        // If discount was denied, redirect to the denial page
+                        if (response.success && response.status === "DeniedDiscount" && response.redirectUrl) {
+                            window.location.href = response.redirectUrl;
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        console.error("Error checking discount status:", error);
+                    }
+                });
+            }
+        });
+    </script>
+} 

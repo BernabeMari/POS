@@ -1,0 +1,189 @@
+@page
+@model POS.Pages.DashboardModel
+@using POS.Models
+@{
+    ViewData["Title"] = "Dashboard";
+}
+
+<div class="container mt-4">
+    @Html.AntiForgeryToken()
+    
+    <!-- Template Content Area - Controlled by admin -->
+    <div id="template-content">
+        <!-- This will be populated by the template if enabled by admin -->
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Load template content if available
+            fetch('/api/templates/active?pageName=Dashboard')
+                .then(response => response.json())
+                .then(data => {
+                    if (data && data.elements) {
+                        renderTemplate(data.elements, data.backgroundColor);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading template:', error);
+                });
+        });
+        
+        function renderTemplate(elements, backgroundColor) {
+            const container = document.getElementById('template-content');
+            if (!container) return;
+            
+            container.innerHTML = '';
+            container.style.backgroundColor = backgroundColor || '';
+            
+            // Render elements
+            elements.forEach(element => {
+                const elementDiv = document.createElement('div');
+                elementDiv.id = element.id;
+                elementDiv.style.position = 'absolute';
+                elementDiv.style.left = element.x + 'px';
+                elementDiv.style.top = element.y + 'px';
+                elementDiv.style.width = element.width + 'px';
+                elementDiv.style.height = element.height + 'px';
+                elementDiv.style.color = element.color || '#000000';
+                
+                if (element.type === 'Button') {
+                    elementDiv.className = 'btn';
+                    elementDiv.style.backgroundColor = element.color;
+                    elementDiv.style.color = '#fff';
+                    elementDiv.innerText = element.text;
+                    elementDiv.style.cursor = 'pointer';
+                    
+                    // Special case for "My Orders" button - directly add click handler
+                    if (element.text && element.text.toLowerCase().includes('my orders')) {
+                        elementDiv.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            window.location.href = '/MyOrders';
+                        });
+                    }
+                    // For other buttons, use the linkUrl if provided
+                    else if (element.linkUrl) {
+                        elementDiv.addEventListener('click', function() {
+                            window.location.href = element.linkUrl;
+                        });
+                    }
+                } else if (element.type === 'Label') {
+                    elementDiv.innerText = element.text;
+                } else if (element.type === 'ContentPanel') {
+                    elementDiv.className = 'card';
+                    elementDiv.innerText = element.text;
+                    elementDiv.style.backgroundColor = '#f8f9fa';
+                    elementDiv.style.border = '1px solid #dee2e6';
+                    elementDiv.style.borderRadius = '0.25rem';
+                    elementDiv.style.padding = '1rem';
+                } else if (element.type === 'Image') {
+                    const img = document.createElement('img');
+                    img.src = element.imageUrl;
+                    img.alt = element.imageDescription || 'Image';
+                    img.style.width = '100%';
+                    img.style.height = '100%';
+                    img.style.objectFit = 'cover';
+                    elementDiv.appendChild(img);
+                    
+                    // Check if this is a product and make it clickable to view details
+                    if (element.isProduct) {
+                        elementDiv.style.cursor = 'pointer';
+                        elementDiv.style.position = 'relative'; // Ensure position relative for overlay
+                        
+                        // Handle unavailable products
+                        if (element.isAvailable === false) {
+                            // Create an overlay for unavailable products
+                            const overlay = document.createElement('div');
+                            overlay.style.position = 'absolute';
+                            overlay.style.top = '0';
+                            overlay.style.left = '0';
+                            overlay.style.width = '100%';
+                            overlay.style.height = '100%';
+                            overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.6)';
+                            overlay.style.display = 'flex';
+                            overlay.style.flexDirection = 'column';
+                            overlay.style.justifyContent = 'center';
+                            overlay.style.alignItems = 'center';
+                            overlay.style.color = 'white';
+                            overlay.style.textAlign = 'center';
+                            overlay.style.padding = '10px';
+                            
+                            // Add unavailable text
+                            const unavailableText = document.createElement('div');
+                            unavailableText.innerHTML = '<i class="bi bi-x-circle"></i> UNAVAILABLE';
+                            unavailableText.style.fontWeight = 'bold';
+                            unavailableText.style.fontSize = '16px';
+                            overlay.appendChild(unavailableText);
+                            
+                            // Add a small explanation
+                            const explanation = document.createElement('div');
+                            explanation.innerText = 'This product is currently not available for ordering';
+                            explanation.style.fontSize = '12px';
+                            explanation.style.marginTop = '5px';
+                            overlay.appendChild(explanation);
+                            
+                            elementDiv.appendChild(overlay);
+                            elementDiv.style.cursor = 'not-allowed'; // Change cursor to indicate it's disabled
+                        } else {
+                            // Add click event for available products
+                            elementDiv.addEventListener('click', function() {
+                                // Show product details modal or add to cart
+                                const elementId = element.dbId || null;
+                                if (elementId) {
+                                    fetch(`/api/products/by-element-id/${elementId}`)
+                                        .then(response => response.json())
+                                        .then(data => {
+                                            // Here you would show a modal with product details
+                                            // and an option to add to cart
+                                            console.log('Product details:', data);
+                                            
+                                            // For now, directly add to cart
+                                            const form = document.createElement('form');
+                                            form.method = 'post';
+                                            form.action = `/Dashboard?handler=AddToCart&elementId=${elementId}&quantity=1`;
+                                            
+                                            // Add the anti-forgery token
+                                            const tokenInput = document.querySelector('input[name="__RequestVerificationToken"]');
+                                            if (tokenInput) {
+                                                const input = document.createElement('input');
+                                                input.type = 'hidden';
+                                                input.name = '__RequestVerificationToken';
+                                                input.value = tokenInput.value;
+                                                form.appendChild(input);
+                                            }
+                                            
+                                            document.body.appendChild(form);
+                                            form.submit();
+                                        })
+                                        .catch(error => console.error('Error fetching product details:', error));
+                                }
+                            });
+                            
+                            // Add a small indicator that this is a clickable product
+                            const indicator = document.createElement('div');
+                            indicator.style.position = 'absolute';
+                            indicator.style.bottom = '5px';
+                            indicator.style.right = '5px';
+                            indicator.style.backgroundColor = 'rgba(0, 123, 255, 0.8)';
+                            indicator.style.color = 'white';
+                            indicator.style.padding = '3px 6px';
+                            indicator.style.borderRadius = '3px';
+                            indicator.style.fontSize = '10px';
+                            indicator.innerHTML = '<i class="bi bi-cart"></i> ORDER';
+                            elementDiv.appendChild(indicator);
+                        }
+                    }
+                }
+                
+                // Apply any additional styles
+                if (element.additionalStyles) {
+                    elementDiv.style.cssText += element.additionalStyles;
+                }
+                
+                container.appendChild(elementDiv);
+            });
+        }
+    </script>
+} 

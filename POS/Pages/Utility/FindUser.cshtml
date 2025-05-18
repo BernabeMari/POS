@@ -1,0 +1,48 @@
+@page
+@model POS.Pages.Utility.FindUserModel
+@{
+    ViewData["Title"] = "Find User";
+    Layout = "_Layout";
+}
+
+<div class="container mt-4">
+    <h1>Find User Information</h1>
+    <p class="text-danger">WARNING: This page is for debugging only and should be removed in production.</p>
+    
+    <div class="row">
+        <div class="col-md-6">
+            <form method="post">
+                <div class="form-group mb-3">
+                    <label asp-for="EmailOrUsername">Email or Username (plain text):</label>
+                    <input asp-for="EmailOrUsername" class="form-control" />
+                </div>
+                <button type="submit" class="btn btn-primary">Find User</button>
+            </form>
+            
+            @if (Model.UserInfo != null)
+            {
+                <div class="mt-4">
+                    <h2>User Information:</h2>
+                    <div class="card">
+                        <div class="card-body">
+                            <p><strong>Username (Encrypted):</strong> @Model.UserInfo.UserName</p>
+                            <p><strong>NormalizedUsername (Encrypted):</strong> @Model.UserInfo.NormalizedUserName</p>
+                            <p><strong>Email (Encrypted):</strong> @Model.UserInfo.Email</p>
+                            <p><strong>NormalizedEmail (Encrypted):</strong> @Model.UserInfo.NormalizedEmail</p>
+                            <p><strong>UserId:</strong> @Model.UserInfo.Id</p>
+                        </div>
+                    </div>
+                </div>
+            }
+            
+            @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+            {
+                <div class="mt-4">
+                    <div class="alert alert-danger">
+                        @Model.ErrorMessage
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div> 

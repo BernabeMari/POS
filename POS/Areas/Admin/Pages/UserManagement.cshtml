@@ -1,0 +1,597 @@
+@page
+@model POS.Areas.Admin.Pages.UserManagementModel
+@{
+    ViewData["Title"] = "User Management";
+}
+
+<style>
+    .encrypted-value {
+        font-family: monospace;
+        font-size: 0.85em;
+        background-color: #f8f9fa;
+        padding: 2px 4px;
+        border-radius: 3px;
+        max-width: 200px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    
+    .encrypted-value:hover {
+        white-space: normal;
+        word-break: break-all;
+    }
+</style>
+
+<div class="container-fluid mt-3">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Manage Users</h5>
+                    <div>
+                        <a asp-page="./Positions" class="btn btn-light me-2">
+                            <i class="bi bi-briefcase"></i> Manage Positions
+                        </a>
+                        <button type="button" class="btn btn-light" data-bs-toggle="modal" data-bs-target="#addUserModal">
+                            <i class="bi bi-person-plus"></i> Add New User
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    @if (Model.SuccessMessage != null)
+                    {
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            @Model.SuccessMessage
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    }
+                    @if (Model.ErrorMessage != null)
+                    {
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            @Model.ErrorMessage
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    }
+
+                    <div class="mb-3">
+                        <div class="btn-group" role="group">
+                            <a asp-page="./UserManagement" asp-route-filter="all" class="btn @(Model.CurrentFilter == "all" ? "btn-primary" : "btn-outline-primary")">All Users</a>
+                            <a asp-page="./UserManagement" asp-route-filter="admin" class="btn @(Model.CurrentFilter == "admin" ? "btn-primary" : "btn-outline-primary")">Admins</a>
+                            <a asp-page="./UserManagement" asp-route-filter="employee" class="btn @(Model.CurrentFilter == "employee" ? "btn-primary" : "btn-outline-primary")">Employees</a>
+                            <a asp-page="./UserManagement" asp-route-filter="customer" class="btn @(Model.CurrentFilter == "customer" ? "btn-primary" : "btn-outline-primary")">Customers</a>
+                        </div>
+                    </div>
+                    
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Full Name</th>
+                                    <th>Username</th>
+                                    <th>Email</th>
+                                    <th>Position</th>
+                                    <th>Roles</th>
+                                    <th>Created Date</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (Model.Users != null && Model.Users.Any())
+                                {
+                                    foreach (var user in Model.Users)
+                                    {
+                                        <tr>
+                                            <td>@user.FullName</td>
+                                            <td>@user.UserName</td>
+                                            <td>@user.Email</td>
+                                            <td>@(user.Position?.Name ?? "N/A")</td>
+                                            <td>
+                                                @foreach (var role in user.Roles)
+                                                {
+                                                    <span class="badge bg-info me-1">@role</span>
+                                                }
+                                            </td>
+                                            <td>@user.CreatedAt.ToString("MMM dd, yyyy")</td>
+                                            <td>
+                                                <button class="btn btn-sm btn-primary" 
+                                                        data-bs-toggle="modal" 
+                                                        data-bs-target="#editUserModal" 
+                                                        data-id="@user.Id"
+                                                        data-fullname="@user.FullName"
+                                                        data-username="@user.UserName"
+                                                        data-email="@user.Email"
+                                                        data-positionid="@user.PositionId"
+                                                        data-isemployee="@user.IsEmployee.ToString().ToLower()"
+                                                        data-isadmin="@user.IsAdmin.ToString().ToLower()">
+                                                    <i class="bi bi-pencil"></i>
+                                                </button>
+                                                <button class="btn btn-sm btn-danger" 
+                                                        data-bs-toggle="modal" 
+                                                        data-bs-target="#deleteUserModal" 
+                                                        data-id="@user.Id"
+                                                        data-fullname="@user.FullName">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+                                else
+                                {
+                                    <tr>
+                                        <td colspan="7" class="text-center">No users found matching the selected filter.</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add User Modal -->
+<div class="modal fade" id="addUserModal" tabindex="-1" aria-labelledby="addUserModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" id="addUserForm">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addUserModalLabel">Add New User</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label asp-for="NewUser.FullName" class="form-label">Full Name</label>
+                        <input asp-for="NewUser.FullName" class="form-control" required />
+                        <span asp-validation-for="NewUser.FullName" class="text-danger"></span>
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="NewUser.Email" class="form-label">Email</label>
+                        <input asp-for="NewUser.Email" type="email" class="form-control" required />
+                        <span asp-validation-for="NewUser.Email" class="text-danger"></span>
+                        <small class="form-text text-muted">Email will be used as the login identifier</small>
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="NewUser.Password" class="form-label">Password</label>
+                        <input asp-for="NewUser.Password" type="password" class="form-control" required />
+                        <span asp-validation-for="NewUser.Password" class="text-danger"></span>
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="NewUser.ConfirmPassword" class="form-label">Confirm Password</label>
+                        <input asp-for="NewUser.ConfirmPassword" type="password" class="form-control" required />
+                        <span asp-validation-for="NewUser.ConfirmPassword" class="text-danger"></span>
+                    </div>
+                    <hr />
+                    <div class="mb-3">
+                        <label class="form-label">User Type</label>
+                        <div class="form-check mb-2">
+                            <input asp-for="NewUser.IsEmployee" class="form-check-input" id="isEmployee" onchange="togglePositionField()" />
+                            <label asp-for="NewUser.IsEmployee" class="form-check-label">Employee</label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input asp-for="NewUser.IsAdmin" class="form-check-input" />
+                            <label asp-for="NewUser.IsAdmin" class="form-check-label">Admin</label>
+                        </div>
+                    </div>
+                    <div class="mb-3" id="positionFieldContainer" style="display: none;">
+                        <label asp-for="NewUser.PositionId" class="form-label">Position</label>
+                        <select asp-for="NewUser.PositionId" class="form-select" asp-items="Model.PositionOptions">
+                            <option value="">-- Select Position --</option>
+                        </select>
+                        <span asp-validation-for="NewUser.PositionId" class="text-danger"></span>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create User</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit User Modal -->
+<div class="modal fade" id="editUserModal" tabindex="-1" aria-labelledby="editUserModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" asp-page-handler="Edit" id="editUserForm">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editUserModalLabel">Edit User</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="editUserId" name="id" />
+                    <div class="mb-3">
+                        <label for="editFullName" class="form-label">Full Name</label>
+                        <input type="text" class="form-control" id="editFullName" name="fullName" required />
+                    </div>
+                    <div class="mb-3">
+                        <label for="editEmail" class="form-label">Email</label>
+                        <input type="email" class="form-control" id="editEmail" name="email" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">New Password (leave blank to keep current)</label>
+                        <input type="password" class="form-control" id="editPassword" name="password" />
+                    </div>
+                    <hr />
+                    <div class="mb-3">
+                        <label class="form-label">User Type</label>
+                        <div class="form-check mb-2">
+                            <input type="checkbox" class="form-check-input" id="editIsEmployee" name="isEmployee" onchange="toggleEditPositionField()" />
+                            <label class="form-check-label" for="editIsEmployee">Employee</label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input type="checkbox" class="form-check-input" id="editIsAdmin" name="isAdmin" />
+                            <label class="form-check-label" for="editIsAdmin">Admin</label>
+                        </div>
+                    </div>
+                    <div class="mb-3" id="editPositionFieldContainer" style="display: none;">
+                        <label for="editPositionId" class="form-label">Position</label>
+                        <select class="form-select" id="editPositionId" asp-items="Model.PositionOptions">
+                            <option value="">-- Select Position --</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Assistant Manager Access Section -->
+                    <div class="mb-3" id="assistantManagerAccessContainer" style="display: none;">
+                        <div class="alert alert-info">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong>Manager Dashboard Access</strong>
+                                    <p class="mb-0 small">Allow this Assistant Manager to view the Manager Dashboard</p>
+                                </div>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="managerAccessToggle">
+                                    <label class="form-check-label" for="managerAccessToggle">Enable Access</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Update User</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Delete User Modal -->
+<div class="modal fade" id="deleteUserModal" tabindex="-1" aria-labelledby="deleteUserModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" asp-page-handler="Delete">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="deleteUserModalLabel">Delete User</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="deleteUserId" name="id" />
+                    <p>Are you sure you want to delete <strong id="deleteUserName"></strong>?</p>
+                    <p class="text-danger">This action cannot be undone.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">Delete User</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Toggle position field based on initial state
+            togglePositionField();
+            
+            // Handle add user form submission
+            const addUserForm = document.getElementById('addUserForm');
+            if (addUserForm) {
+                addUserForm.addEventListener('submit', function(e) {
+                    const isEmployee = document.getElementById('isEmployee').checked;
+                    
+                    // Validate position selection for employees
+                    if (isEmployee) {
+                        const positionId = document.querySelector('[name="NewUser.PositionId"]').value;
+                        if (!positionId) {
+                            e.preventDefault();
+                            alert('Please select a position for the employee.');
+                            return false;
+                        }
+                    }
+                });
+            }
+            
+            // Handle edit user modal
+            const editModal = document.getElementById('editUserModal');
+            if (editModal) {
+                editModal.addEventListener('show.bs.modal', function(event) {
+                    const button = event.relatedTarget;
+                    const userId = button.getAttribute('data-id');
+                    const fullName = button.getAttribute('data-fullname');
+                    const email = button.getAttribute('data-email');
+                    const positionId = button.getAttribute('data-positionid');
+                    const isEmployee = button.getAttribute('data-isemployee') === 'true';
+                    const isAdmin = button.getAttribute('data-isadmin') === 'true';
+                    
+                    console.log('Opening edit modal for user:', userId);
+                    console.log('Position ID:', positionId);
+                    console.log('Is Employee:', isEmployee);
+                    
+                    const modal = this;
+                    modal.querySelector('#editUserId').value = userId;
+                    modal.querySelector('#editFullName').value = fullName;
+                    modal.querySelector('#editEmail').value = email;
+                    modal.querySelector('#editIsEmployee').checked = isEmployee;
+                    modal.querySelector('#editIsAdmin').checked = isAdmin;
+                    
+                    // Set position dropdown if the user is an employee
+                    if (isEmployee) {
+                        const positionSelect = modal.querySelector('#editPositionId');
+                        if (positionId && positionId !== 'null') {
+                            positionSelect.value = positionId;
+                        } else {
+                            positionSelect.selectedIndex = 0; // Set to default option
+                        }
+                    }
+                    
+                    // Show/hide position field based on employee status
+                    toggleEditPositionField();
+                });
+            }
+            
+            // Handle edit form submission to conditionally include position
+            const editForm = document.getElementById('editUserForm');
+            if (editForm) {
+                editForm.addEventListener('submit', function(e) {
+                    // Prevent default form submission
+                    e.preventDefault();
+                    
+                    // Get form data
+                    const formData = new FormData(this);
+                    
+                    // Ensure boolean values for checkboxes are correctly handled
+                    // For boolean values in ASP.NET Core, 'true' or 'false' strings are expected
+                    const isEmployee = document.getElementById('editIsEmployee').checked;
+                    const isAdmin = document.getElementById('editIsAdmin').checked;
+                    
+                    // Remove any existing values that might have been auto-added
+                    formData.delete('isEmployee');
+                    formData.delete('isAdmin');
+                    
+                    // Add explicit true/false values - this ensures correct boolean binding in ASP.NET Core
+                    formData.append('isEmployee', isEmployee.toString());
+                    formData.append('isAdmin', isAdmin.toString());
+                    
+                    console.log('IsEmployee:', isEmployee);
+                    console.log('IsAdmin:', isAdmin);
+                    
+                    // Add positionId to form data only if user is an employee
+                    if (isEmployee) {
+                        const positionId = document.getElementById('editPositionId').value;
+                        
+                        // Check if a position was selected
+                        if (!positionId) {
+                            alert('Please select a position for the employee.');
+                            return; // Prevent form submission
+                        }
+                        
+                        console.log('Adding positionId:', positionId);
+                        formData.append('positionId', positionId);
+                    } else {
+                        // If not an employee, explicitly set positionId to null
+                        // We'll send an empty string and handle it server-side
+                        console.log('Setting positionId to empty (null)');
+                        formData.append('positionId', '');
+                    }
+                    
+                    // Log form data for debugging
+                    console.log('Form data:');
+                    for (let pair of formData.entries()) {
+                        console.log(pair[0] + ': ' + pair[1]);
+                    }
+                    
+                    // Convert FormData to URL-encoded string
+                    const data = new URLSearchParams(formData);
+                    
+                    // Submit form via fetch API
+                    fetch(this.action, {
+                        method: 'POST',
+                        body: data,
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded'
+                        }
+                    })
+                    .then(response => {
+                        if (response.ok) {
+                            // Redirect to same page to refresh data
+                            window.location.reload();
+                        } else {
+                            console.error('Error updating user');
+                            // Display error message
+                            alert('Error updating user. Please try again.');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('An error occurred. Please try again.');
+                    });
+                });
+            }
+            
+            // Handle delete user modal
+            const deleteModal = document.getElementById('deleteUserModal');
+            if (deleteModal) {
+                deleteModal.addEventListener('show.bs.modal', function(event) {
+                    const button = event.relatedTarget;
+                    const userId = button.getAttribute('data-id');
+                    const fullName = button.getAttribute('data-fullname');
+                    
+                    const modal = this;
+                    modal.querySelector('#deleteUserId').value = userId;
+                    modal.querySelector('#deleteUserName').textContent = fullName;
+                });
+            }
+        });
+        
+        function togglePositionField() {
+            const isEmployee = document.getElementById('isEmployee').checked;
+            const positionField = document.getElementById('positionFieldContainer');
+            
+            if (isEmployee) {
+                positionField.style.display = 'block';
+            } else {
+                positionField.style.display = 'none';
+            }
+        }
+        
+        function toggleEditPositionField() {
+            const isEmployee = document.getElementById('editIsEmployee').checked;
+            const positionField = document.getElementById('editPositionFieldContainer');
+            
+            if (isEmployee) {
+                positionField.style.display = 'block';
+                
+                // Check if position is Assistant Manager and show access section
+                const positionSelect = document.getElementById('editPositionId');
+                const assistantManagerAccessContainer = document.getElementById('assistantManagerAccessContainer');
+                
+                if (positionSelect && assistantManagerAccessContainer) {
+                    // Check if position contains "Assistant Manager" text
+                    const selectedOption = positionSelect.options[positionSelect.selectedIndex];
+                    const isAssistantManager = selectedOption && selectedOption.text.includes('Assistant Manager');
+                    
+                    assistantManagerAccessContainer.style.display = isAssistantManager ? 'block' : 'none';
+                }
+            } else {
+                positionField.style.display = 'none';
+                // Hide Assistant Manager access section
+                const assistantManagerAccessContainer = document.getElementById('assistantManagerAccessContainer');
+                if (assistantManagerAccessContainer) {
+                    assistantManagerAccessContainer.style.display = 'none';
+                }
+            }
+        }
+        
+        // Add event listener to position select to check for Assistant Manager position
+        document.addEventListener('DOMContentLoaded', function() {
+            const positionSelect = document.getElementById('editPositionId');
+            let currentUserId = '';
+            let hasManagerAccess = false;
+            
+            if (positionSelect) {
+                positionSelect.addEventListener('change', function() {
+                    const assistantManagerAccessContainer = document.getElementById('assistantManagerAccessContainer');
+                    if (assistantManagerAccessContainer) {
+                        // Check if position contains "Assistant Manager" text
+                        const selectedOption = this.options[this.selectedIndex];
+                        const isAssistantManager = selectedOption && selectedOption.text.includes('Assistant Manager');
+                        
+                        assistantManagerAccessContainer.style.display = isAssistantManager ? 'block' : 'none';
+                        
+                        // If switching to a non-Assistant Manager role, make sure toggle is off
+                        if (!isAssistantManager) {
+                            const managerAccessToggle = document.getElementById('managerAccessToggle');
+                            if (managerAccessToggle) {
+                                managerAccessToggle.checked = false;
+                            }
+                        }
+                    }
+                });
+            }
+            
+            // Handle edit user modal open - check if user has manager access
+            const editModal = document.getElementById('editUserModal');
+            if (editModal) {
+                editModal.addEventListener('show.bs.modal', function(event) {
+                    const button = event.relatedTarget;
+                    const userId = button.getAttribute('data-id');
+                    currentUserId = userId;
+                    
+                    // Fetch user preferences to see if they have manager access
+                    fetch(`/api/user-preferences?userId=${userId}&key=ManagerAccess`)
+                        .then(response => response.json())
+                        .then(data => {
+                            hasManagerAccess = data && data.value === 'true';
+                            const managerAccessToggle = document.getElementById('managerAccessToggle');
+                            if (managerAccessToggle) {
+                                managerAccessToggle.checked = hasManagerAccess;
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error fetching user preferences:', error);
+                        });
+                });
+            }
+            
+            // Add event listener to manager access toggle
+            const managerAccessToggle = document.getElementById('managerAccessToggle');
+            if (managerAccessToggle) {
+                managerAccessToggle.addEventListener('change', function() {
+                    const isEnabled = this.checked;
+                    const userId = currentUserId;
+                    if (!userId) {
+                        console.error('No user ID available');
+                        return;
+                    }
+                    
+                    // Get CSRF token
+                    const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
+                    
+                    // Save setting to database
+                    fetch('/api/user-preferences', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            userId: userId,
+                            key: 'ManagerAccess',
+                            value: isEnabled.toString()
+                        })
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Failed to save preference');
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data.success) {
+                            // Show success message
+                            const successMessage = isEnabled 
+                                ? 'Manager dashboard access enabled' 
+                                : 'Manager dashboard access disabled';
+                            
+                            // Add temporary success notification
+                            const container = document.getElementById('assistantManagerAccessContainer');
+                            const notification = document.createElement('div');
+                            notification.className = 'alert alert-success mt-2';
+                            notification.innerHTML = `<i class="bi bi-check-circle"></i> ${successMessage}`;
+                            container.appendChild(notification);
+                            
+                            // Remove notification after 3 seconds
+                            setTimeout(() => {
+                                notification.remove();
+                            }, 3000);
+                        } else {
+                            alert('Failed to save preference: ' + (data.message || 'Unknown error'));
+                            // Reset toggle to previous state
+                            this.checked = !isEnabled;
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error saving preference:', error);
+                        alert('An error occurred while saving preference');
+                        // Reset toggle to previous state
+                        this.checked = !isEnabled;
+                    });
+                });
+            }
+        });
+    </script>
+} 

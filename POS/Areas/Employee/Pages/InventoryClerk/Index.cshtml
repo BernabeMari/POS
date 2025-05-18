@@ -1,0 +1,1131 @@
+@page
+@model POS.Areas.Employee.Pages.InventoryClerk.IndexModel
+
+@{
+    ViewData["Title"] = "Inventory Clerk Dashboard";
+}
+
+@Html.AntiForgeryToken()
+
+<div class="container mt-4">
+    <div id="templateContent">
+        <div class="d-flex justify-content-center">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+        <p class="text-center mt-2">Loading template...</p>
+    </div>
+    
+    <div id="pageContent" class="d-none">
+        <!-- This will be populated by the template or default content -->
+    </div>
+</div>
+
+<!-- Quantity Update Modal -->
+<div class="modal fade" id="updateQuantityModal" tabindex="-1" aria-labelledby="updateQuantityModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="updateQuantityModalLabel">Update Product Quantity</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="updateQuantityForm" method="post">
+                <div class="modal-body">
+                    <input type="hidden" id="productIdInput" name="productId" />
+                    <div class="mb-3">
+                        <label for="productSelect" class="form-label">Select Product</label>
+                        <select class="form-select" id="productSelect" required>
+                            <option value="">Choose a product...</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="currentQuantityDisplay" class="form-label">Current Quantity</label>
+                        <input type="text" class="form-control" id="currentQuantityDisplay" readonly />
+                    </div>
+                    <div class="mb-3">
+                        <label for="newQuantityInput" class="form-label">New Quantity</label>
+                        <input type="number" class="form-control" id="newQuantityInput" name="newQuantity" min="0" required />
+                    </div>
+                    <div class="mb-3">
+                        <label for="reasonInput" class="form-label">Reason for Update</label>
+                        <select class="form-select" id="reasonInput" name="reason">
+                            <option value="Restock">Restock</option>
+                            <option value="Inventory Count">Inventory Count</option>
+                            <option value="Damaged">Damaged/Expired</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="notesInput" class="form-label">Notes (Optional)</label>
+                        <textarea class="form-control" id="notesInput" name="notes" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Update Quantity</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Add Product Modal -->
+<div class="modal fade" id="addProductModal" tabindex="-1" aria-labelledby="addProductModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addProductModalLabel">Add New Product</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="addProductForm" method="post">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="productNameInput" class="form-label">Product Name</label>
+                        <input type="text" class="form-control" id="productNameInput" name="productName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="initialQuantityInput" class="form-label">Initial Quantity</label>
+                        <input type="number" class="form-control" id="initialQuantityInput" name="initialQuantity" min="0" value="0" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="unitTypeInput" class="form-label">Unit Type</label>
+                       <select class="form-select" id="unitTypeInput" name="unitType" required>
+    <option value="" disabled selected>Select a unit</option>
+    <option value="g">Grams (g)</option>
+    <option value="kg">Kilograms (kg)</option>
+    <option value="ml">Milliliters (ml)</option>
+    <option value="l">Liters (l)</option>
+    <option value="cup">Cup</option>
+    <option value="tbsp">Tablespoon</option>
+    <option value="tsp">Teaspoon</option>
+    <option value="oz">Ounce (oz)</option>
+    <option value="lb">Pound (lb)</option>
+    <option value="piece">Piece</option>
+    <option value="slice">Slice</option>
+    <option value="clove">Clove</option>
+    <option value="pinch">Pinch</option>
+</select>
+
+                    </div>
+                    <div class="mb-3">
+                        <label for="thresholdInput" class="form-label">Low Stock Threshold</label>
+                        <input type="number" class="form-control" id="thresholdInput" name="threshold" min="0" value="5" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">Add Product</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            fetch('/api/templates/active?pageName=InventoryClerkDashboard')
+                .then(response => response.json())
+                .then(data => {
+                    if (data && data.elements) {
+                        const templateContent = document.getElementById('templateContent');
+                        if (templateContent) {
+                            templateContent.style.display = 'none';
+                        }
+                        
+                        const pageContent = document.getElementById('pageContent');
+                        if (pageContent) {
+                            pageContent.classList.remove('d-none');
+                            // Apply background color from template
+                            if (data.backgroundColor) {
+                                pageContent.style.backgroundColor = data.backgroundColor;
+                                document.body.style.backgroundColor = data.backgroundColor;
+                            }
+                            renderTemplate(data.elements);
+                        }
+                    } else {
+                        showDefaultDashboard();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading template:', error);
+                    showDefaultDashboard();
+                });
+                
+            // Handle add product form submission
+            document.getElementById('addProductForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const newProduct = {
+                    productName: document.getElementById('productNameInput').value,
+                    category: "General", // Default category
+                    quantity: parseFloat(document.getElementById('initialQuantityInput').value),
+                    unitType: document.getElementById('unitTypeInput').value,
+                    thresholdLevel: parseFloat(document.getElementById('thresholdInput').value)
+                };
+                
+                // Call API to add product to database
+                fetch('/api/stocks', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(newProduct)
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        return response.text().then(text => {
+                            try {
+                                const errorData = JSON.parse(text);
+                                throw new Error(errorData.message || errorData.error || errorData.title || 'Failed to add product');
+                            } catch (e) {
+                                throw new Error(text || 'Failed to add product');
+                            }
+                        });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // Close modal
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('addProductModal'));
+                    modal.hide();
+                    
+                    // Reset form
+                    this.reset();
+                    
+                    // Refresh product inventory
+                    loadProductInventory(document.getElementById('product-inventory-content'));
+                    
+                    // Also refresh alerts panel as it may need updating
+                    loadInventoryAlerts(document.getElementById('inventory-alerts-content'));
+                    
+                    // Show success message
+                    alert('Product added successfully!');
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Failed to add product: ' + error.message);
+                });
+            });
+
+            // Handle update quantity form submission
+            document.getElementById('updateQuantityForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const productId = document.getElementById('productIdInput').value;
+                const newQuantity = parseFloat(document.getElementById('newQuantityInput').value);
+                const reason = document.getElementById('reasonInput').value;
+                const notes = document.getElementById('notesInput').value;
+                
+                // Call API to update product quantity
+                fetch(`/api/stocks/${productId}/quantity`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        newQuantity: newQuantity,
+                        reason: reason,
+                        notes: notes
+                    })
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        // Get more detailed error information
+                        return response.text().then(text => {
+                            throw new Error(text || `Server returned ${response.status}: ${response.statusText}`);
+                        });
+                    }
+                    
+                    // Close modal
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('updateQuantityModal'));
+                    if (modal) {
+                        modal.hide();
+                    }
+                    
+                    // Show success message
+                    alert('Quantity updated successfully!');
+                    
+                    // Refresh relevant panels
+                    const stockLevelsContainer = document.getElementById('stock-levels-content');
+                    const inventoryAlertsContainer = document.getElementById('inventory-alerts-content');
+                    const productInventoryContainer = document.getElementById('product-inventory-content');
+                    
+                    if (stockLevelsContainer) {
+                        loadStockLevels(stockLevelsContainer);
+                    }
+                    
+                    if (inventoryAlertsContainer) {
+                        loadInventoryAlerts(inventoryAlertsContainer);
+                    }
+                    
+                    if (productInventoryContainer) {
+                        loadProductInventory(productInventoryContainer);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error updating quantity:', error);
+                    
+                    // Provide a more helpful error message
+                    let errorMessage = 'Failed to update quantity';
+                    
+                    if (error.message) {
+                        if (error.message.includes('{')) {
+                            // Try to parse JSON error
+                            try {
+                                const errorData = JSON.parse(error.message);
+                                errorMessage = errorData.message || errorData.error || errorData.title || error.message;
+                            } catch (e) {
+                                errorMessage = error.message;
+                            }
+                        } else {
+                            errorMessage = error.message;
+                        }
+                    }
+                    
+                    alert(`Failed to update quantity: ${errorMessage}`);
+                });
+            });
+
+            // Add event listener for product selection
+            document.getElementById('productSelect').addEventListener('change', function() {
+                const selectedOption = this.options[this.selectedIndex];
+                if (selectedOption.value) {
+                    document.getElementById('productIdInput').value = selectedOption.value;
+                    document.getElementById('currentQuantityDisplay').value = selectedOption.getAttribute('data-quantity');
+                } else {
+                    document.getElementById('productIdInput').value = '';
+                    document.getElementById('currentQuantityDisplay').value = '';
+                }
+            });
+        });
+        
+        function renderTemplate(elements) {
+            const container = document.getElementById('pageContent');
+            if (!container) return;
+            
+            container.innerHTML = '';
+            
+            // Create a relative positioned container for absolute positioned elements
+            const designCanvas = document.createElement('div');
+            designCanvas.className = 'position-relative';
+            designCanvas.style.height = '700px';
+            container.appendChild(designCanvas);
+            
+            // Render each element
+            elements.forEach(element => {
+                const elementDiv = document.createElement('div');
+                elementDiv.className = 'position-absolute';
+                elementDiv.id = element.id;
+                elementDiv.style.left = element.x + 'px';
+                elementDiv.style.top = element.y + 'px';
+                elementDiv.style.width = element.width + 'px';
+                elementDiv.style.height = element.height + 'px';
+                
+                // Apply any additional styles
+                if (element.additionalStyles) {
+                    elementDiv.style.cssText += element.additionalStyles;
+                }
+                
+                if (element.type === 'Label') {
+                    elementDiv.className += ' d-flex align-items-center';
+                    elementDiv.style.color = element.color;
+                    elementDiv.style.fontSize = '16px';
+                    elementDiv.innerHTML = element.text;
+                }
+                else if (element.type === 'Button') {
+                    elementDiv.className += ' btn';
+                    elementDiv.style.backgroundColor = element.color;
+                    elementDiv.style.color = '#fff';
+                    elementDiv.style.fontSize = '14px';
+                    elementDiv.innerHTML = element.text;
+                    
+                    // Add event listener for logout button
+                    if (element.id === 'logout-button') {
+                        elementDiv.addEventListener('click', function() {
+                            document.getElementById('logoutForm').submit();
+                        });
+                    }
+                }
+                else if (element.type === 'ContentPanel') {
+                    elementDiv.className += ' card';
+                    
+                    // Create card header
+                    const cardHeader = document.createElement('div');
+                    cardHeader.className = 'card-header';
+                    cardHeader.innerHTML = `<h5 class="mb-0">${element.text}</h5>`;
+                    elementDiv.appendChild(cardHeader);
+                    
+                    // Create card body
+                    const cardBody = document.createElement('div');
+                    cardBody.className = 'card-body p-0';
+                    cardBody.id = `${element.id}-content`;
+                    elementDiv.appendChild(cardBody);
+                    
+                    // Load appropriate content based on panel ID
+                    if (element.id === 'inventory-alerts') {
+                        loadInventoryAlerts(cardBody);
+                    }
+                    else if (element.id === 'stock-levels') {
+                        loadStockLevels(cardBody);
+                    }
+                    else if (element.id === 'incoming-shipments') {
+                        loadIncomingShipments(cardBody);
+                    }
+                    else if (element.id === 'recent-activities') {
+                        loadRecentActivities(cardBody);
+                    }
+                    else if (element.id === 'product-inventory') {
+                        loadProductInventory(cardBody);
+                    }
+                }
+                
+                designCanvas.appendChild(elementDiv);
+            });
+            
+            // Add hidden logout form
+            const logoutForm = document.createElement('form');
+            logoutForm.id = 'logoutForm';
+            logoutForm.method = 'post';
+            logoutForm.action = '/Logout';
+            logoutForm.style.display = 'none';
+            document.body.appendChild(logoutForm);
+        }
+        
+        function showDefaultDashboard() {
+            const templateContent = document.getElementById('templateContent');
+            if (templateContent) {
+                templateContent.innerHTML = `
+                    <div class="row mb-4">
+                        <div class="col-md-12">
+                            <div class="alert alert-primary">
+                                <h4 class="alert-heading">Inventory Clerk Dashboard</h4>
+                                <p>Welcome to your dashboard. Here you can monitor inventory alerts, stock levels, incoming shipments, and recent activities.</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card mb-4">
+                                <div class="card-header bg-primary text-white">
+                                    <h5 class="mb-0">Inventory Alerts</h5>
+                                </div>
+                                <div class="card-body p-0" id="inventory-alerts-content">
+                                    Loading...
+                                </div>
+                            </div>
+                            
+                            <div class="card mb-4">
+                                <div class="card-header bg-primary text-white">
+                                    <h5 class="mb-0">Incoming Shipments</h5>
+                                </div>
+                                <div class="card-body p-0" id="incoming-shipments-content">
+                                    Loading...
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="card mb-4">
+                                <div class="card-header bg-primary text-white">
+                                    <h5 class="mb-0">Stock Levels</h5>
+                                </div>
+                                <div class="card-body p-0" id="stock-levels-content">
+                                    Loading...
+                                </div>
+                            </div>
+                            
+                            <div class="card mb-4">
+                                <div class="card-header bg-primary text-white">
+                                    <h5 class="mb-0">Product Inventory</h5>
+                                </div>
+                                <div class="card-body p-0" id="product-inventory-content">
+                                    Loading...
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                // Load content into panels
+                loadInventoryAlerts(document.getElementById('inventory-alerts-content'));
+                loadStockLevels(document.getElementById('stock-levels-content'));
+                loadIncomingShipments(document.getElementById('incoming-shipments-content'));
+                loadProductInventory(document.getElementById('product-inventory-content'));
+            }
+        }
+        
+        function loadInventoryAlerts(container) {
+            // Check if container exists
+            if (!container) {
+                console.warn('Inventory alerts container not found');
+                return;
+            }
+            
+            // Show loading indicator
+            container.innerHTML = `
+                <div class="d-flex justify-content-center p-3">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            `;
+            
+            // Fetch low stock items from API
+            fetch('/api/stocks/lowstock')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to load low stock items');
+                    }
+                    return response.json();
+                })
+                .then(lowStockItems => {
+                    // Check if container still exists (might have been removed from DOM)
+                    if (!container) {
+                        console.warn('Inventory alerts container no longer exists');
+                        return;
+                    }
+                    
+                    // Simulate expiring soon data (this would be managed separately in a real app)
+                    const expiringSoon = [
+                        { name: "Fresh Cream", expiryDate: "Tomorrow", quantity: "2 gallons" },
+                        { name: "Pastries", expiryDate: "Today", quantity: "8 pieces" }
+                    ];
+                    
+                    let html = `
+                        <div class="p-3">
+                            <div class="alert alert-danger mb-3">
+                                <div class="d-flex align-items-center">
+                                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                                    <div>
+                                        <strong>${lowStockItems.length} items low on stock</strong>
+                                        <div class="small">Items below reorder threshold</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="list-group mb-4">
+                    `;
+                    
+                    // Add low stock items to the list
+                    if (lowStockItems.length === 0) {
+                        html += `
+                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                                <div class="text-success">
+                                    <i class="bi bi-check-circle me-2"></i>
+                                    All product stock levels are healthy
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        for (const item of lowStockItems) {
+                            const stockStatus = item.quantity <= 0 ? 'bg-danger' : 'bg-warning';
+                            const stockText = item.quantity <= 0 ? 'Out of Stock' : 'Low Stock';
+                            
+                            html += `
+                                <div class="list-group-item d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <strong>${item.productName}</strong>
+                                        <div class="small text-muted">Only ${item.quantity} ${item.unitType} left (Min: ${item.thresholdLevel})</div>
+                                    </div>
+                                    <span class="badge ${stockStatus}">${stockText}</span>
+                                </div>
+                            `;
+                        }
+                    }
+                    
+                    html += `
+                            </div>
+                            
+                            <h6 class="mb-3">Expiring Soon</h6>
+                            <div class="list-group mb-3">
+                    `;
+                    
+                    for (const item of expiringSoon) {
+                        html += `
+                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong>${item.name}</strong>
+                                    <div class="small text-muted">Quantity: ${item.quantity}</div>
+                                </div>
+                                <span class="badge bg-danger">Expires ${item.expiryDate}</span>
+                            </div>
+                        `;
+                    }
+                    
+                    html += `
+                            </div>
+                            
+                            <div class="text-end">
+                                <button class="btn btn-primary">
+                                    <i class="bi bi-cart-plus"></i> Reorder Items
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    
+                    container.innerHTML = html;
+                })
+                .catch(error => {
+                    console.error('Error loading inventory alerts:', error);
+                    
+                    // Check if container still exists
+                    if (!container) {
+                        console.warn('Inventory alerts container no longer exists');
+                        return;
+                    }
+                    
+                    container.innerHTML = `
+                        <div class="p-3">
+                            <div class="alert alert-danger">
+                                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                                Failed to load inventory alerts. Please try refreshing the page.
+                            </div>
+                        </div>
+                    `;
+                });
+        }
+        
+        function loadStockLevels(container) {
+            // Check if container exists
+            if (!container) {
+                console.warn('Stock levels container not found');
+                return;
+            }
+            
+            // Show loading indicator
+            container.innerHTML = `
+                <div class="d-flex justify-content-center p-3">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            `;
+            
+            // Fetch stock level data from API
+            fetch('/api/stocks/summary')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to load stock summary');
+                    }
+                    return response.json();
+                })
+                .then(stockData => {
+                    // Check if container still exists
+                    if (!container) {
+                        console.warn('Stock levels container no longer exists');
+                        return;
+                    }
+                    
+                    // Calculate in-stock percentage for the progress bar
+                    const inStockPercentage = stockData.totalItems > 0 
+                        ? Math.round((stockData.totalInStock / stockData.totalItems) * 100) 
+                        : 0;
+                    
+                    let html = `
+                        <div class="p-3">
+                            <div class="mb-4">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <h6 class="mb-0">Overall Inventory Status</h6>
+                                    <span class="small text-muted">${stockData.totalInStock}/${stockData.totalItems} items in stock</span>
+                                </div>
+                                <div class="progress" style="height: 8px;">
+                                    <div class="progress-bar bg-success" role="progressbar" style="width: ${inStockPercentage}%" 
+                                        aria-valuenow="${inStockPercentage}" aria-valuemin="0" aria-valuemax="100"></div>
+                                </div>
+                            </div>
+                            
+                            <div class="row text-center mb-4">
+                                <div class="col-4">
+                                    <div class="border rounded py-2">
+                                        <h4 class="mb-0">${stockData.totalInStock}</h4>
+                                        <div class="small text-muted">In Stock</div>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="border rounded py-2">
+                                        <h4 class="mb-0 text-warning">${stockData.totalLowStock}</h4>
+                                        <div class="small text-muted">Low Stock</div>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="border rounded py-2">
+                                        <h4 class="mb-0 text-danger">${stockData.totalOutOfStock}</h4>
+                                        <div class="small text-muted">Out of Stock</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <h6 class="mb-3">By Category</h6>
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Category</th>
+                                            <th class="text-center">Total</th>
+                                            <th class="text-center">In Stock</th>
+                                            <th class="text-center">Low</th>
+                                            <th class="text-center">Out</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                    `;
+                    
+                    for (const category of stockData.categories) {
+                        html += `
+                            <tr>
+                                <td>${category.name}</td>
+                                <td class="text-center">${category.totalItems}</td>
+                                <td class="text-center">${category.inStock}</td>
+                                <td class="text-center text-warning">${category.lowStock}</td>
+                                <td class="text-center text-danger">${category.outOfStock}</td>
+                            </tr>
+                        `;
+                    }
+                    
+                    html += `
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            <div class="text-end">
+                                <button class="btn btn-primary">
+                                    <i class="bi bi-search"></i> Full Inventory
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    
+                    container.innerHTML = html;
+                })
+                .catch(error => {
+                    console.error('Error loading stock levels:', error);
+                    
+                    // Check if container still exists
+                    if (!container) {
+                        console.warn('Stock levels container no longer exists');
+                        return;
+                    }
+                    
+                    container.innerHTML = `
+                        <div class="p-3">
+                            <div class="alert alert-danger">
+                                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                                Failed to load inventory status. Please try refreshing the page.
+                            </div>
+                        </div>
+                    `;
+                });
+        }
+        
+        function loadIncomingShipments(container) {
+            // Simulate shipment data
+            const shipmentData = {
+                pendingDeliveries: [
+                    { id: "SHP-1025", supplier: "Coffee Wholesalers Inc.", items: 5, status: "In Transit", eta: "Today, 2:00 PM" },
+                    { id: "SHP-1026", supplier: "Dairy Fresh", items: 3, status: "Processing", eta: "Tomorrow" },
+                    { id: "SHP-1027", supplier: "Cups & More", items: 2, status: "Shipped", eta: "Nov.15" }
+                ],
+                recentDeliveries: [
+                    { id: "SHP-1023", supplier: "Baked Goods Co.", items: 4, date: "Yesterday", status: "Received" },
+                    { id: "SHP-1024", supplier: "Teatime Suppliers", items: 3, date: "2 days ago", status: "Received" }
+                ]
+            };
+            
+            let html = `
+                <div class="p-3">
+                    <div class="alert alert-info mb-4">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-truck me-2"></i>
+                            <div>
+                                <strong>${shipmentData.pendingDeliveries.length} incoming shipments</strong>
+                                <div class="small">Next delivery: ${shipmentData.pendingDeliveries[0].eta}</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <h6 class="mb-3">Pending Deliveries</h6>
+                    <div class="list-group mb-4">
+            `;
+            
+            for (const shipment of shipmentData.pendingDeliveries) {
+                let statusClass;
+                if (shipment.status === "In Transit") statusClass = "primary";
+                else if (shipment.status === "Processing") statusClass = "warning";
+                else statusClass = "info";
+                
+                html += `
+                    <div class="list-group-item">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <strong>${shipment.id}</strong>
+                                <div class="small text-muted">${shipment.supplier} • ${shipment.items} items</div>
+                            </div>
+                            <div class="text-end">
+                                <span class="badge bg-${statusClass} mb-1">${shipment.status}</span>
+                                <div class="small text-muted">ETA: ${shipment.eta}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            html += `
+                    </div>
+                    
+                    <h6 class="mb-3">Recent Deliveries</h6>
+                    <div class="list-group mb-3">
+            `;
+            
+            for (const delivery of shipmentData.recentDeliveries) {
+                html += `
+                    <div class="list-group-item">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <strong>${delivery.id}</strong>
+                                <div class="small text-muted">${delivery.supplier} • ${delivery.items} items</div>
+                            </div>
+                            <div class="text-end">
+                                <span class="badge bg-success mb-1">${delivery.status}</span>
+                                <div class="small text-muted">${delivery.date}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            html += `
+                    </div>
+                    
+                    <div class="text-end">
+                        <button class="btn btn-outline-primary me-2">
+                            <i class="bi bi-plus-circle"></i> New Order
+                        </button>
+                        <button class="btn btn-primary">
+                            <i class="bi bi-list-check"></i> All Shipments
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            container.innerHTML = html;
+        }
+        
+        function loadProductInventory(container) {
+            // Check if container exists
+            if (!container) {
+                console.warn('Product inventory container not found');
+                return;
+            }
+            
+            // Show loading indicator
+            container.innerHTML = `
+                <div class="d-flex justify-content-center p-3">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            `;
+            
+            // Fetch products from API
+            fetch('/api/stocks')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to load products');
+                    }
+                    return response.json();
+                })
+                .then(products => {
+                    // Check if container still exists
+                    if (!container) {
+                        console.warn('Product inventory container no longer exists');
+                        return;
+                    }
+                    
+                    // Populate the product select dropdown
+                    const productSelect = document.getElementById('productSelect');
+                    if (productSelect) {
+                        productSelect.innerHTML = '<option value="">Choose a product...</option>';
+                        products.forEach(product => {
+                            const option = document.createElement('option');
+                            option.value = product.stockID;
+                            option.textContent = `${product.productName} (${product.quantity} ${product.unitType})`;
+                            option.setAttribute('data-quantity', `${product.quantity} ${product.unitType}`);
+                            productSelect.appendChild(option);
+                        });
+                    }
+                    
+                    let html = `
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6 class="mb-0">Product Inventory</h6>
+                            <div class="d-flex">
+                                <div class="input-group me-2" style="max-width: 250px;">
+                                    <input type="text" class="form-control form-control-sm" placeholder="Search products" id="productSearchInput">
+                                    <button class="btn btn-outline-secondary btn-sm" type="button">
+                                        <i class="bi bi-search"></i>
+                                    </button>
+                                </div>
+                                <button class="btn btn-success btn-sm" onclick="showAddProductModal()">
+                                    <i class="bi bi-plus-circle"></i> Add Product
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Product</th>
+                                        <th class="text-center">Quantity</th>
+                                        <th class="text-center">Status</th>
+                                        <th class="text-end">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                    `;
+                    
+                    if (products.length === 0) {
+                        html += `
+                            <tr>
+                                <td colspan="5" class="text-center py-4">
+                                    <div class="text-muted">No products found</div>
+                                    <button class="btn btn-success btn-sm mt-2" onclick="showAddProductModal()">
+                                        <i class="bi bi-plus-circle"></i> Add Your First Product
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                    } else {
+                        for (const product of products) {
+                            let statusClass = "success";
+                            let statusText = "In Stock";
+                            
+                            if (product.quantity <= 0) {
+                                statusClass = "danger";
+                                statusText = "Out of Stock";
+                            } else if (product.quantity < product.thresholdLevel) {
+                                statusClass = "warning";
+                                statusText = "Low Stock";
+                            }
+                            
+                            html += `
+                                <tr>
+                                    <td>
+                                        <strong>${product.productName}</strong>
+                                    </td>
+                                    <td class="text-center">${product.quantity} ${product.unitType}</td>
+                                    <td class="text-center">
+                                        <span class="badge bg-${statusClass}">${statusText}</span>
+                                    </td>
+                                    <td class="text-end">
+                                        <button class="btn btn-sm btn-primary" onclick="showUpdateModal(${product.stockID})">
+                                            Update Quantity
+                                        </button>
+                                        <button class="btn btn-sm btn-danger" onclick="deleteProduct(${product.stockID})">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            `;
+                        }
+                    }
+                    
+                    html += `
+                                    </tbody>
+                                </table>
+                            </div>
+                    `;
+                    
+                    container.innerHTML = html;
+                })
+                .catch(error => {
+                    console.error('Error loading products:', error);
+                    
+                    // Check if container still exists
+                    if (!container) {
+                        console.warn('Product inventory container no longer exists');
+                        return;
+                    }
+                    
+                    container.innerHTML = `
+                        <div class="p-3">
+                            <div class="alert alert-danger">
+                                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                                Failed to load product inventory. Please try refreshing the page.
+                            </div>
+                        </div>
+                    `;
+                });
+        }
+        
+        function loadRecentActivities(container) {
+            // Simulate activity data
+            const activityData = {
+                logs: [
+                    { action: "Received Shipment", details: "SHP-1023 from Baked Goods Co.", user: "John Smith", time: "Yesterday, 3:45 PM" },
+                    { action: "Updated Inventory", details: "Added 24 units of Chai Tea Mix", user: "You", time: "Yesterday, 2:30 PM" },
+                    { action: "Marked as Low Stock", details: "Almond Milk (0.5 gal remaining)", user: "System", time: "Yesterday, 11:20 AM" },
+                    { action: "Placed Order", details: "SHP-1027 to Cups & More", user: "You", time: "2 days ago, 4:15 PM" },
+                    { action: "Inventory Count", details: "Coffee & Tea category", user: "Emma Johnson", time: "2 days ago, 10:30 AM" }
+                ]
+            };
+            
+            let html = `
+                <div class="p-3">
+                    <h6 class="mb-3">Activity Log</h6>
+                    <div class="list-group mb-3">
+            `;
+            
+            for (const activity of activityData.logs) {
+                let iconClass;
+                if (activity.action.includes("Received")) iconClass = "bi-box-seam";
+                else if (activity.action.includes("Updated")) iconClass = "bi-pencil";
+                else if (activity.action.includes("Marked")) iconClass = "bi-exclamation-triangle";
+                else if (activity.action.includes("Placed")) iconClass = "bi-cart";
+                else iconClass = "bi-clipboard-check";
+                
+                html += `
+                    <div class="list-group-item">
+                        <div class="d-flex">
+                            <div class="me-3">
+                                <i class="bi ${iconClass} text-primary"></i>
+                            </div>
+                            <div>
+                                <strong>${activity.action}</strong>
+                                <div>${activity.details}</div>
+                                <div class="small text-muted">
+                                    <span class="me-2">${activity.user}</span>•
+                                    <span class="ms-2">${activity.time}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            html += `
+                    </div>
+                    
+                    <div class="text-end">
+                        <button class="btn btn-primary">
+                            <i class="bi bi-journal-text"></i> Full Activity Log
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            container.innerHTML = html;
+        }
+        
+        // Add these functions for product management
+        function showAddProductModal() {
+            // Reset form
+            document.getElementById('addProductForm').reset();
+            
+            const modal = new bootstrap.Modal(document.getElementById('addProductModal'));
+            modal.show();
+        }
+        
+        function showUpdateModal(productId) {
+            const productSelect = document.getElementById('productSelect');
+            productSelect.value = productId;
+            productSelect.dispatchEvent(new Event('change'));
+            
+            // Reset new quantity and notes fields
+            document.getElementById('newQuantityInput').value = '';
+            document.getElementById('notesInput').value = '';
+            
+            const modal = new bootstrap.Modal(document.getElementById('updateQuantityModal'));
+            modal.show();
+        }
+        
+        function deleteProduct(productId) {
+            if (confirm('Are you sure you want to delete this product?')) {
+                // First, get all stock history for this product
+                fetch(`/api/stocks/${productId}/history`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        // If endpoint doesn't exist, continue with delete attempt
+                        if (response.status === 404) {
+                            return { hasHistory: false };
+                        }
+                        return response.text().then(text => {
+                            throw new Error(text || `Error checking product history: ${response.status}`);
+                        });
+                    }
+                    return response.json().then(data => {
+                        return { hasHistory: data && data.length > 0 };
+                    });
+                })
+                .then(result => {
+                    if (result.hasHistory) {
+                        alert('This product has history records and cannot be deleted directly. Please archive it instead or contact your administrator.');
+                        return;
+                    }
+                    
+                    // No history or couldn't check, proceed with delete attempt
+                    return fetch(`/api/stocks/${productId}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            // Get more detailed error information
+                            return response.text().then(text => {
+                                throw new Error(text || `Server returned ${response.status}: ${response.statusText}`);
+                            });
+                        }
+                        
+                        // Show success message
+                        alert('Product deleted successfully!');
+                        
+                        // Refresh relevant panels
+                        const productInventoryContainer = document.getElementById('product-inventory-content');
+                        const inventoryAlertsContainer = document.getElementById('inventory-alerts-content');
+                        
+                        if (productInventoryContainer) {
+                            loadProductInventory(productInventoryContainer);
+                        }
+                        
+                        if (inventoryAlertsContainer) {
+                            loadInventoryAlerts(inventoryAlertsContainer);
+                        }
+                    });
+                })
+                .catch(error => {
+                    console.error('Error deleting product:', error);
+                    
+                    // Provide a more helpful error message
+                    let errorMessage = 'Failed to delete product';
+                    
+                    if (error.message) {
+                        if (error.message.includes('inner exception')) {
+                            errorMessage = 'This product has history records and cannot be deleted. Please archive it instead.';
+                        } else if (error.message.includes('{')) {
+                            // Try to parse JSON error
+                            try {
+                                const errorData = JSON.parse(error.message);
+                                errorMessage = errorData.message || errorData.error || errorData.title || error.message;
+                            } catch (e) {
+                                errorMessage = error.message;
+                            }
+                        } else {
+                            errorMessage = error.message;
+                        }
+                    }
+                    
+                    alert(`Failed to delete product: ${errorMessage}`);
+                });
+            }
+        }
+    </script>
+} 

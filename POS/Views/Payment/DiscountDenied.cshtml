@@ -1,0 +1,103 @@
+@{
+    ViewData["Title"] = "Discount Request Denied";
+    Layout = "_Layout";
+    
+    var order = ViewBag.Order as POS.Models.Order;
+    var cartTotal = ViewBag.CartTotal;
+    var cartItems = ViewBag.CartItems as IEnumerable<POS.Models.CartItem>;
+    var reason = ViewBag.DenialReason as string ?? "Your discount request couldn't be approved at this time.";
+}
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">Discount Request Denied</h5>
+                </div>
+                <div class="card-body text-center">
+                    <div class="mb-4">
+                        <i class="bi bi-x-circle display-1 text-danger"></i>
+                    </div>
+                    
+                    <h4 class="mb-3">Your Discount Request Was Not Approved</h4>
+                    
+                    <div class="alert alert-secondary mt-4">
+                        <div class="d-flex align-items-center">
+                            <div class="text-start">
+                                <strong>Reason:</strong><br>
+                                @reason
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card mb-4">
+                        <div class="card-body">
+                            <h5 class="card-title">Cart Summary</h5>
+                            <div class="d-flex justify-content-between">
+                                <span>Order Reference #@order.Id</span>
+                                <span>@DateTime.Now.ToString("MM/dd/yyyy h:mm tt")</span>
+                            </div>
+                            
+                            @if (cartItems != null && cartItems.Any())
+                            {
+                                <div class="table-responsive mt-3">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>Item</th>
+                                                <th>Price</th>
+                                                <th>Qty</th>
+                                                <th class="text-end">Total</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var item in cartItems)
+                                            {
+                                                <tr>
+                                                    <td>@item.ProductName</td>
+                                                    <td>@item.Price.ToString("C")</td>
+                                                    <td>@item.Quantity</td>
+                                                    <td class="text-end">@((item.Price * item.Quantity).ToString("C"))</td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                                
+                                @* Calculate total directly from cart items as a fallback *@
+                                decimal calculatedTotal = cartItems.Sum(i => i.Price * i.Quantity);
+                                
+                                <div class="d-flex justify-content-between mt-3">
+                                    <span>Total Cart Value:</span>
+                                    <span>@(cartTotal > 0 ? cartTotal.ToString("C") : calculatedTotal.ToString("C"))</span>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="alert alert-warning mt-3">
+                                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                                    Your cart is currently empty. Please add items to your cart before proceeding.
+                                </div>
+                            }
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4 d-flex justify-content-between">
+                        <a href="@Url.Action("Index", "User")" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left me-2"></i>Return to Dashboard
+                        </a>
+                        
+                        <form method="post" action="@Url.Action("CreatePayment", "Payment")">
+                            <input type="hidden" name="orderId" value="@order.Id" />
+                            <button type="submit" class="btn btn-primary">
+                                Continue to Payment
+                                <i class="bi bi-arrow-right ms-2"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div> 

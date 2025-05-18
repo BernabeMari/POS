@@ -1,0 +1,98 @@
+@page
+@model POS.Areas.Admin.Pages.SecuritySettingsModel
+@{
+    ViewData["Title"] = "Security Settings";
+}
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-12 mb-4">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Security Settings</h4>
+                </div>
+                <div class="card-body">
+                    <p>Configure security-related settings for the application.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Encryption Settings</h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle-fill me-2"></i>
+                        The system uses a Caesar cipher (shift cipher) for encrypting sensitive data. You can configure the shift value below.
+                    </div>
+                    
+                    @if (Model.SuccessMessage != null)
+                    {
+                        <div class="alert alert-success alert-dismissible fade show mb-3" role="alert">
+                            <i class="bi bi-check-circle-fill me-2"></i>
+                            @Model.SuccessMessage
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    }
+                    
+                    @if (Model.ErrorMessage != null)
+                    {
+                        <div class="alert alert-danger alert-dismissible fade show mb-3" role="alert">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                            @Model.ErrorMessage
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    }
+                    
+                    <form method="post">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label asp-for="ShiftValue" class="form-label">Caesar Cipher Shift Value</label>
+                                    <input asp-for="ShiftValue" class="form-control" min="1" max="25" />
+                                    <span asp-validation-for="ShiftValue" class="text-danger"></span>
+                                    <div class="form-text">
+                                        Enter a number between 1 and 25. This is used to shift letters in the alphabet for encryption.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-12">
+                                <div class="alert alert-warning">
+                                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                                    <strong>Warning:</strong> Changing the shift value will affect new encryptions only. 
+                                    Previously encrypted data will still use the old shift value for decryption.
+                                </div>
+                                <div class="alert alert-info">
+                                    <i class="bi bi-info-circle-fill me-2"></i>
+                                    <strong>Need to update existing data?</strong> Visit the 
+                                    <a href="/Admin/EncryptionSettings" class="alert-link">Advanced Encryption Settings</a> 
+                                    page to re-encrypt all data with a new shift value.
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-save"></i> Save Changes
+                            </button>
+                            <a asp-page="/Index" class="btn btn-secondary">
+                                <i class="bi bi-arrow-left"></i> Back to Dashboard
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+} 

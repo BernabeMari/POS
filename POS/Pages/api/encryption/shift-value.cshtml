@@ -1,0 +1,7 @@
+@page
+@model POS.Pages.Api.Encryption.ShiftValueModel
+@{
+    Layout = null;
+}
+
+@Json.Serialize(new { shiftValue = Model.ShiftValue }) 

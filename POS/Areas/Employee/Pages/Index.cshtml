@@ -1,0 +1,1043 @@
+@page
+@model POS.Areas.Employee.Pages.IndexModel
+
+@{
+    ViewData["Title"] = "Employee Dashboard";
+}
+
+@Html.AntiForgeryToken()
+
+<div class="container mt-4">
+    <div id="templateContent">
+        <div class="d-flex justify-content-center">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+        <p class="text-center mt-2">Loading template...</p>
+    </div>
+    
+    <div id="pageContent" class="d-none">
+        <!-- This will be populated by the template or default content -->
+    </div>
+
+    <!-- Product Details Modal -->
+    <div class="modal fade" id="productDetailsModal" tabindex="-1" aria-labelledby="productDetailsModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="productDetailsModalLabel">Product Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="text-center mb-3">
+                        <img id="modalProductImage" src="" alt="Product Image" class="img-fluid" style="max-height: 200px;">
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Name:</strong> <span id="modalProductName"></span></p>
+                            <p><strong>Price:</strong> $<span id="modalProductPrice"></span></p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Stock:</strong> <span id="modalProductStock"></span></p>
+                        </div>
+                    </div>
+                    <p><strong>Description:</strong></p>
+                    <p id="modalProductDescription"></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Global variables for tracking orders
+        let lastOrderId = 0;
+        
+        // Fetch the Caesar shift value when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            // Fetch the shift value from the server
+            fetch('/api/encryption/shift-value')
+                .then(response => response.json())
+                .then(data => {
+                    // Store the shift value in a global variable
+                    window.caesarShiftValue = data.shiftValue;
+                    console.log('Loaded shift value:', window.caesarShiftValue);
+                })
+                .catch(error => {
+                    console.error('Error loading shift value, using default:', error);
+                    window.caesarShiftValue = 7; // Fallback to default
+                });
+                
+            // Rest of the initialization code...
+            fetch('/api/templates/active?pageName=EmployeeDashboard')
+                .then(response => response.json())
+                .then(data => {
+                    if (data && data.elements) {
+                        const templateContent = document.getElementById('templateContent');
+                        if (templateContent) {
+                            templateContent.style.display = 'none';
+                        }
+                        
+                        const pageContent = document.getElementById('pageContent');
+                        if (pageContent) {
+                            pageContent.classList.remove('d-none');
+                            // Apply background color from template
+                            if (data.backgroundColor) {
+                                pageContent.style.backgroundColor = data.backgroundColor;
+                            }
+                            renderTemplate(data.elements);
+                        }
+                    } else {
+                        showDefaultDashboard();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading template:', error);
+                    showDefaultDashboard();
+                });
+        });
+        
+        // Add decryption function for usernames
+        function decryptUsername(cipherText) {
+            if (!cipherText || cipherText === 'Walk-in') return cipherText;
+            
+            try {
+                let result = "";
+                
+                // Get the shift value from the global variable (fetched on page load)
+                const shiftValue = window.caesarShiftValue || 7;
+                
+                // Apply reverse Caesar cipher shift to each character
+                for (let i = 0; i < cipherText.length; i++) {
+                    const c = cipherText.charAt(i);
+                    
+                    // Only decrypt letters (both uppercase and lowercase)
+                    if (/[a-zA-Z]/.test(c)) {
+                        const baseChar = /[A-Z]/.test(c) ? 'A'.charCodeAt(0) : 'a'.charCodeAt(0);
+                        // Apply reverse shift with wrap-around within the alphabet (mod 26)
+                        // Add 26 before modulo to handle negative numbers
+                        const decryptedCharCode = ((c.charCodeAt(0) - baseChar - shiftValue + 26) % 26) + baseChar;
+                        result += String.fromCharCode(decryptedCharCode);
+                    } else {
+                        // Non-letter characters remain unchanged
+                        result += c;
+                    }
+                }
+                
+                return result;
+            } catch (error) {
+                console.error('Error decrypting username:', error);
+                return cipherText; // Return encrypted text on error
+            }
+        }
+        
+        // Helper functions for decryption
+        function isValidBase64(str) {
+            try {
+                return btoa(atob(str)) === str;
+            } catch (err) {
+                return false;
+            }
+        }
+        
+        // Function to show product details in modal
+        function showProductDetails(productId, imageUrl, productName) {
+            // Set known values immediately
+            document.getElementById('modalProductImage').src = imageUrl;
+            document.getElementById('modalProductName').textContent = productName;
+            
+            // Reset other fields while loading
+            document.getElementById('modalProductPrice').textContent = '...';
+            document.getElementById('modalProductStock').textContent = '...';
+            document.getElementById('modalProductDescription').textContent = 'Loading...';
+            
+            // Show the modal
+            const modal = new bootstrap.Modal(document.getElementById('productDetailsModal'));
+            modal.show();
+            
+            // Fetch additional product details
+            fetch(`/api/products/${productId}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to load product details');
+                    }
+                    return response.json();
+                })
+                .then(product => {
+                    // Update modal with fetched details
+                    document.getElementById('modalProductPrice').textContent = product.price ? product.price.toFixed(2) : 'N/A';
+                    document.getElementById('modalProductStock').textContent = product.stock !== undefined ? product.stock : 'N/A';
+                    document.getElementById('modalProductDescription').textContent = product.description || 'No description available';
+                })
+                .catch(error => {
+                    console.error('Error loading product details:', error);
+                    document.getElementById('modalProductDescription').textContent = 'Error loading product details. Please try again.';
+                });
+        }
+        
+        function showToast(message, type = 'primary') {
+            // Create toast container if it doesn't exist
+            let toastContainer = document.getElementById('toast-container');
+            if (!toastContainer) {
+                toastContainer = document.createElement('div');
+                toastContainer.id = 'toast-container';
+                toastContainer.className = 'position-fixed top-0 end-0 p-3';
+                toastContainer.style.zIndex = '1050';
+                document.body.appendChild(toastContainer);
+            }
+            
+            // Create toast element
+            const toastId = 'toast-' + Date.now();
+            const toast = document.createElement('div');
+            toast.id = toastId;
+            toast.className = `toast align-items-center text-white bg-${type} border-0`;
+            toast.role = 'alert';
+            toast.ariaLive = 'assertive';
+            toast.ariaAtomic = 'true';
+            toast.innerHTML = `
+                <div class="d-flex">
+                    <div class="toast-body">
+                        ${message}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            `;
+            
+            toastContainer.appendChild(toast);
+            
+            // Initialize and show the toast
+            const toastInstance = new bootstrap.Toast(toast, { autohide: true, delay: 5000 });
+            toastInstance.show();
+            
+            // Remove from DOM after hidden
+            toast.addEventListener('hidden.bs.toast', function() {
+                toast.remove();
+            });
+        }
+
+        function renderTemplate(elements) {
+            const container = document.getElementById('pageContent');
+            if (!container) return;
+            
+            container.innerHTML = '';
+            
+            // Create a relative positioned container for absolute positioned elements
+            const designCanvas = document.createElement('div');
+            designCanvas.className = 'position-relative';
+            designCanvas.style.height = '700px'; // Taller for employee dashboard
+            container.appendChild(designCanvas);
+            
+            // Render each element
+            elements.forEach(element => {
+                const elementDiv = document.createElement('div');
+                elementDiv.className = 'position-absolute';
+                elementDiv.id = element.id;
+                elementDiv.style.left = element.x + 'px';
+                elementDiv.style.top = element.y + 'px';
+                elementDiv.style.width = element.width + 'px';
+                elementDiv.style.height = element.height + 'px';
+                
+                if (element.id === 'orders-panel') {
+                    // Special handling for orders panel
+                    elementDiv.className += ' card';
+                    
+                    const cardHeader = document.createElement('div');
+                    cardHeader.className = 'card-header';
+                    cardHeader.innerHTML = '<h5 class="mb-0 d-flex justify-content-between align-items-center">' + 
+                                          '<span>' + element.text + '</span>' +
+                                          '<button class="btn btn-sm btn-outline-primary refresh-btn" onclick="refreshOrderPanels()">' +
+                                          '<i class="bi bi-arrow-clockwise"></i> Refresh</button></h5>';
+                    
+                    const cardBody = document.createElement('div');
+                    cardBody.className = 'card-body p-0 overflow-auto';
+                    cardBody.style.maxHeight = (element.height - 50) + 'px';
+                    
+                    elementDiv.appendChild(cardHeader);
+                    elementDiv.appendChild(cardBody);
+                    
+                    // Load orders data
+                    loadOrdersContent(elementDiv);
+                }
+                else if (element.id === 'my-tasks') {
+                    // Panel for tasks assigned to this employee
+                    elementDiv.className += ' card';
+                    
+                    const cardHeader = document.createElement('div');
+                    cardHeader.className = 'card-header';
+                    cardHeader.innerHTML = '<h5 class="mb-0 d-flex justify-content-between align-items-center">' + 
+                                          '<span>' + element.text + '</span>' +
+                                          '<button class="btn btn-sm btn-outline-primary refresh-btn" onclick="refreshAssignedOrders()">' +
+                                          '<i class="bi bi-arrow-clockwise"></i> Refresh</button></h5>';
+                    
+                    const cardBody = document.createElement('div');
+                    cardBody.className = 'card-body p-0 overflow-auto';
+                    cardBody.style.maxHeight = (element.height - 50) + 'px';
+                    
+                    elementDiv.appendChild(cardHeader);
+                    elementDiv.appendChild(cardBody);
+                    
+                    // Load assigned orders data
+                    loadAssignedOrdersContent(elementDiv);
+                }
+                else if (element.id === 'orders-history') {
+                    // Panel for order history
+                    elementDiv.className += ' card';
+                    
+                    const cardHeader = document.createElement('div');
+                    cardHeader.className = 'card-header';
+                    cardHeader.innerHTML = '<h5 class="mb-0">' + element.text + '</h5>';
+                    
+                    const cardBody = document.createElement('div');
+                    cardBody.className = 'card-body p-0 overflow-auto';
+                    cardBody.style.maxHeight = (element.height - 50) + 'px';
+                    
+                    elementDiv.appendChild(cardHeader);
+                    elementDiv.appendChild(cardBody);
+                    
+                    // Load order history data
+                    loadOrderHistoryContent(elementDiv);
+                }
+                else if (element.type === 'InputField') {
+                    const label = document.createElement('label');
+                    label.innerText = element.text;
+                    label.className = 'me-2';
+                    
+                    const input = document.createElement('input');
+                    input.type = element.id.includes('password') ? 'password' : 'text';
+                    input.className = 'form-control';
+                    
+                    const formGroup = document.createElement('div');
+                    formGroup.className = 'd-flex flex-column';
+                    
+                    formGroup.appendChild(label);
+                    formGroup.appendChild(input);
+                    elementDiv.appendChild(formGroup);
+                } else if (element.type === 'Button') {
+                    elementDiv.className += ' btn';
+                    elementDiv.style.backgroundColor = element.color;
+                    elementDiv.style.color = '#fff';
+                    elementDiv.innerText = element.text;
+                    elementDiv.style.display = 'flex';
+                    elementDiv.style.justifyContent = 'center';
+                    elementDiv.style.alignItems = 'center';
+                    
+                    // Add click handler for logout button
+                    if (element.id === 'logout-button') {
+                        elementDiv.addEventListener('click', function() {
+                            window.location.href = '/Identity/Account/Logout';
+                        });
+                    }
+                } else if (element.type === 'Label') {
+                    elementDiv.innerText = element.text;
+                    elementDiv.style.color = element.color;
+                    elementDiv.style.display = 'flex';
+                    elementDiv.style.alignItems = 'center';
+                    
+                    if (element.id.includes('link')) {
+                        elementDiv.style.textDecoration = 'underline';
+                        elementDiv.style.cursor = 'pointer';
+                    }
+                } else if (element.type === 'ContentPanel') {
+                    // For content panels, add dynamic content based on panel ID
+                    elementDiv.style.backgroundColor = '#f8f9fa';
+                    elementDiv.style.border = '1px solid #dee2e6';
+                    elementDiv.style.borderRadius = '4px';
+                    elementDiv.style.padding = '15px';
+                    elementDiv.style.overflow = 'auto';
+                    
+                    if (element.id === 'orders-panel') {
+                        loadOrdersContent(elementDiv);
+                    } else if (element.id === 'my-tasks') {
+                        loadTasksContent(elementDiv);
+                    } else if (element.id === 'orders-history') {
+                        loadOrderHistoryContent(elementDiv);
+                    } else {
+                        elementDiv.innerHTML = `<h5>${element.text}</h5><p>Content loading...</p>`;
+                    }
+                } else if (element.type === 'Image') {
+                    if (element.imageUrl) {
+                        elementDiv.style.backgroundImage = `url(${element.imageUrl})`;
+                        elementDiv.style.backgroundSize = 'cover';
+                        elementDiv.style.backgroundPosition = 'center';
+                    } else {
+                        elementDiv.style.backgroundColor = '#f0f0f0';
+                        elementDiv.innerHTML = '<div class="d-flex justify-content-center align-items-center h-100">No Image</div>';
+                    }
+                }
+                
+                designCanvas.appendChild(elementDiv);
+            });
+        }
+        
+        function showDefaultDashboard() {
+            const templateContent = document.getElementById('templateContent');
+            if (templateContent) {
+                templateContent.style.display = 'none';
+            }
+            
+            const pageContent = document.getElementById('pageContent');
+            if (pageContent) {
+                pageContent.classList.remove('d-none');
+                pageContent.innerHTML = `
+                    <div class="row">
+                        <div class="col-12">
+                            <h1>Employee Dashboard</h1>
+                            <p>Welcome to your employee dashboard. From here, you can manage orders and view tasks.</p>
+                        </div>
+                    </div>
+                    <div class="row mt-4">
+                        <div class="col-lg-8">
+                            <div class="card mb-4">
+                                <div class="card-header">
+                                    <h5 class="mb-0">New Orders</h5>
+                                </div>
+                                <div class="card-body" id="default-orders-panel">
+                                    <p>Loading orders...</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-4">
+                            <div class="card mb-4">
+                                <div class="card-header">
+                                    <h5 class="mb-0">My Assigned Tasks</h5>
+                                </div>
+                                <div class="card-body" id="default-tasks-panel">
+                                    <p>Loading tasks...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">Order History</h5>
+                                </div>
+                                <div class="card-body" id="default-history-panel">
+                                    <p>Loading order history...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row mt-4">
+                        <div class="col-12 text-end">
+                            <a href="/Identity/Account/Logout" class="btn btn-danger">Logout</a>
+                        </div>
+                    </div>
+                `;
+                
+                // Load content in the default dashboard
+                loadOrdersContent(document.getElementById('default-orders-panel'));
+                loadTasksContent(document.getElementById('default-tasks-panel'));
+                loadOrderHistoryContent(document.getElementById('default-history-panel'));
+            }
+        }
+        
+        // Functions to load dynamic content
+        function loadOrdersContent(container) {
+            const ordersContent = container.querySelector('.card-body');
+            if (!ordersContent) return;
+            
+            // Show loading indicator
+            ordersContent.innerHTML = '<div class="d-flex justify-content-center p-3"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+            
+            // Fetch new orders data
+            fetch('/api/orders/new')
+                .then(response => response.json())
+                .then(data => {
+                    if (data && data.length > 0) {
+                        // Update lastOrderId for real-time notifications
+                        const highestId = Math.max(...data.map(order => order.id));
+                        if (highestId > lastOrderId) {
+                            lastOrderId = highestId;
+                        }
+                        
+                        // Create table to display orders
+                        const table = document.createElement('table');
+                        table.className = 'table table-hover mb-0';
+                        
+                        // Create table header
+                        const thead = document.createElement('thead');
+                        thead.innerHTML = `
+                            <tr>
+                                <th>#</th>
+                                <th>Customer</th>
+                                <th>Product</th>
+                                <th>Price</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        `;
+                        
+                        // Create table body with orders
+                        const tbody = document.createElement('tbody');
+                        
+                        data.forEach(order => {
+                            const tr = document.createElement('tr');
+                            
+                            // Order ID column
+                            const tdId = document.createElement('td');
+                            tdId.textContent = order.id;
+                            
+                            // Customer column
+                            const tdCustomer = document.createElement('td');
+                            tdCustomer.textContent = decryptUsername(order.user ? order.user.userName : 'Unknown');
+                            
+                            // Product column
+                            const tdProduct = document.createElement('td');
+                            tdProduct.innerHTML = `
+                                <div class="d-flex align-items-center">
+                                    <div class="me-2" style="width: 40px; height: 40px; overflow: hidden; cursor: pointer;" 
+                                         onclick="showProductDetails(${order.productId}, '${order.productImageUrl}', '${order.productName.replace(/'/g, "\\'")}')">
+                                        <img src="${order.productImageUrl}" class="img-fluid" alt="${order.productName}">
+                                    </div>
+                                    <div>
+                                        <span>${order.productName}</span>
+                                        <small class="d-block text-muted">Qty: ${order.quantity}</small>
+                                    </div>
+                                </div>
+                            `;
+                            
+                            // Price column
+                            const tdPrice = document.createElement('td');
+                            tdPrice.textContent = '$' + order.totalPrice.toFixed(2);
+                            
+                            // Status column with badge
+                            const tdStatus = document.createElement('td');
+                            tdStatus.innerHTML = getStatusBadge(order.status);
+                            
+                            // Actions column
+                            const tdActions = document.createElement('td');
+                            tdActions.innerHTML = `
+                                <div class="btn-group btn-group-sm">
+                                    <button class="btn btn-primary assign-btn" data-order-id="${order.id}">
+                                        <i class="bi bi-person-check"></i> Assign to Me
+                                    </button>
+                                </div>
+                            `;
+                            
+                            // Add columns to row
+                            tr.appendChild(tdId);
+                            tr.appendChild(tdCustomer);
+                            tr.appendChild(tdProduct);
+                            tr.appendChild(tdPrice);
+                            tr.appendChild(tdStatus);
+                            tr.appendChild(tdActions);
+                            
+                            // Add row to table body
+                            tbody.appendChild(tr);
+                        });
+                        
+                        // Assemble the table
+                        table.appendChild(thead);
+                        table.appendChild(tbody);
+                        
+                        // Clear and append the table to the container
+                        ordersContent.innerHTML = '';
+                        ordersContent.appendChild(table);
+                        
+                        // Add event listeners to assign buttons
+                        const assignButtons = ordersContent.querySelectorAll('.assign-btn');
+                        assignButtons.forEach(btn => {
+                            btn.addEventListener('click', function() {
+                                const orderId = this.getAttribute('data-order-id');
+                                assignOrderToMe(orderId);
+                            });
+                        });
+                    } else {
+                        // No orders found
+                        ordersContent.innerHTML = '<div class="alert alert-info m-3">No new orders at this time.</div>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading orders:', error);
+                    ordersContent.innerHTML = '<div class="alert alert-danger m-3">Failed to load orders. Please try again.</div>';
+                });
+        }
+        
+        function loadTasksContent(container) {
+            if (!container) return;
+            
+            fetch('/api/orders/assigned')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to load assigned orders');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data && data.length > 0) {
+                        const list = document.createElement('div');
+                        list.className = 'list-group';
+                        list.innerHTML = data.map(task => `
+                            <div class="list-group-item">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <div>
+                                        <strong>Order #${task.id}</strong>
+                                        <div>${task.productName || 'No description'}</div>
+                                        <small class="text-muted">${new Date(task.createdAt).toLocaleString()}</small>
+                                    </div>
+                                    <span class="badge bg-${getStatusColor(task.status)}">${task.status}</span>
+                                </div>
+                                <div class="btn-group btn-group-sm w-100">
+                                    ${task.status === 'OrderReceived' ? 
+                                        `<button class="btn btn-warning" onclick="updateOrderStatus(${task.id}, 'OnGoing')">Mark as On Going</button>` : 
+                                        (task.status === 'OnGoing' ? 
+                                            `<button class="btn btn-success" onclick="updateOrderStatus(${task.id}, 'Complete')">Mark as Complete</button>` : 
+                                            `<button class="btn btn-primary" onclick="updateOrderStatus(${task.id}, 'OrderReceived')">Mark as Received</button>`
+                                        )
+                                    }
+                                    <button class="btn btn-danger" onclick="updateOrderStatus(${task.id}, 'Cancelled')">Cancel Order</button>
+                                </div>
+                            </div>
+                        `).join('');
+                        container.innerHTML = '';
+                        container.appendChild(list);
+                    } else {
+                        container.innerHTML = '<p>No tasks assigned to you.</p>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    container.innerHTML = '<p>Error loading tasks. Please try again later.</p>';
+                });
+        }
+        
+        function loadOrderHistoryContent(container) {
+            const contentArea = container.querySelector('.card-body');
+            if (!contentArea) return;
+            
+            // Show loading indicator
+            contentArea.innerHTML = '<div class="d-flex justify-content-center p-3"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+            
+            // Fetch order history
+            fetch('/api/orders/history')
+                .then(response => response.json())
+                .then(data => {
+                    if (data && data.length > 0) {
+                        // Create table
+                        const table = document.createElement('table');
+                        table.className = 'table table-hover mb-0';
+                        
+                        // Create table header
+                        const thead = document.createElement('thead');
+                        thead.innerHTML = `
+                            <tr>
+                                <th>#</th>
+                                <th>Customer</th>
+                                <th>Product</th>
+                                <th>Date</th>
+                                <th>Status</th>
+                            </tr>
+                        `;
+                        
+                        // Create table body
+                        const tbody = document.createElement('tbody');
+                        
+                        data.forEach(order => {
+                            const tr = document.createElement('tr');
+                            
+                            // Order ID
+                            const tdId = document.createElement('td');
+                            tdId.textContent = order.id;
+                            
+                            // Customer
+                            const tdCustomer = document.createElement('td');
+                            tdCustomer.textContent = decryptUsername(order.user ? order.user.userName : 'Unknown');
+                            
+                            // Product
+                            const tdProduct = document.createElement('td');
+                            tdProduct.innerHTML = `
+                                <div class="d-flex align-items-center">
+                                    <div class="me-2" style="width: 30px; height: 30px; overflow: hidden; cursor: pointer;"
+                                         onclick="showProductDetails(${order.productId}, '${order.productImageUrl}', '${order.productName.replace(/'/g, "\\'")}')">
+                                        <img src="${order.productImageUrl}" class="img-fluid" alt="${order.productName}">
+                                    </div>
+                                    <span>${order.productName}</span>
+                                </div>
+                            `;
+                            
+                            // Date
+                            const tdDate = document.createElement('td');
+                            const date = new Date(order.createdAt);
+                            tdDate.textContent = date.toLocaleString();
+                            
+                            // Status
+                            const tdStatus = document.createElement('td');
+                            tdStatus.innerHTML = getStatusBadge(order.status);
+                            
+                            // Add columns to row
+                            tr.appendChild(tdId);
+                            tr.appendChild(tdCustomer);
+                            tr.appendChild(tdProduct);
+                            tr.appendChild(tdDate);
+                            tr.appendChild(tdStatus);
+                            
+                            // Add row to table body
+                            tbody.appendChild(tr);
+                        });
+                        
+                        // Assemble the table
+                        table.appendChild(thead);
+                        table.appendChild(tbody);
+                        
+                        // Clear and append the table to the container
+                        contentArea.innerHTML = '';
+                        contentArea.appendChild(table);
+                    } else {
+                        // No order history
+                        contentArea.innerHTML = '<div class="alert alert-info m-3">No order history found.</div>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading order history:', error);
+                    contentArea.innerHTML = '<div class="alert alert-danger m-3">Failed to load order history. Please try again.</div>';
+                });
+        }
+        
+        // Helper function to get status color
+        function getStatusColor(status) {
+            switch(status) {
+                case 'Complete':
+                case 'Completed':
+                    return 'success';
+                case 'Processing':
+                    return 'primary';
+                case 'Cancelled':
+                    return 'danger';
+                case 'Pending':
+                    return 'warning';
+                case 'OrderReceived':
+                    return 'info';
+                case 'OnGoing':
+                    return 'primary';
+                default:
+                    return 'secondary';
+            }
+        }
+        
+        // Function to get status badge HTML
+        function getStatusBadge(status) {
+            let badgeClass = 'bg-secondary';
+            
+            switch (status) {
+                case 'Pending':
+                    badgeClass = 'bg-warning text-dark';
+                    break;
+                case 'OrderReceived':
+                    badgeClass = 'bg-info text-dark';
+                    break;
+                case 'OnGoing':
+                    badgeClass = 'bg-primary';
+                    break;
+                case 'ReadyToServe':
+                    badgeClass = 'bg-success';
+                    break;
+                case 'Processing':
+                    badgeClass = 'bg-primary';
+                    break;
+                case 'Completed':
+                case 'Complete':
+                    badgeClass = 'bg-success';
+                    break;
+                case 'Cancelled':
+                    badgeClass = 'bg-danger';
+                    break;
+            }
+            
+            return `<span class="badge ${badgeClass}">${status}</span>`;
+        }
+        
+        // Action functions for order management
+        function assignOrderToMe(orderId) {
+            fetch(`?handler=AssignOrder&orderId=${orderId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to assign order');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data && data.success) {
+                    showToast('Order assigned successfully!', 'success');
+                    
+                    // Refresh both panels with a slight delay to allow database updates to complete
+                    setTimeout(() => {
+                        refreshOrderPanels();
+                        refreshAssignedOrders();
+                    }, 500);
+                } else {
+                    showToast('Failed to assign order: ' + (data.message || 'Unknown error'), 'danger');
+                }
+            })
+            .catch(error => {
+                console.error('Error assigning order:', error);
+                showToast('Failed to assign order. Please try again.', 'danger');
+                
+                // Don't refresh panels on error to prevent confusion
+            });
+        }
+        
+        function updateOrderStatus(orderId, status) {
+            fetch(`?handler=UpdateStatus&orderId=${orderId}&status=${status}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to update status');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data && data.success) {
+                    showToast(`Order status updated to ${status}`, 'success');
+                    
+                    // Refresh assigned orders panel
+                    refreshAssignedOrders();
+                } else {
+                    showToast('Failed to update status: ' + (data.message || 'Unknown error'), 'danger');
+                }
+            })
+            .catch(error => {
+                console.error('Error updating status:', error);
+                showToast('Failed to update status. Please try again.', 'danger');
+            });
+        }
+        
+        function viewOrderDetails(orderId) {
+            window.location.href = `/Areas/Employee/Pages/OrderDetails?id=${orderId}`;
+        }
+
+        // Function to load assigned orders
+        function loadAssignedOrdersContent(container) {
+            const contentArea = container.querySelector('.card-body');
+            if (!contentArea) return;
+            
+            // Show loading indicator
+            contentArea.innerHTML = '<div class="d-flex justify-content-center p-3"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+            
+            // Fetch assigned orders
+            fetch('/api/orders/assigned')
+                .then(response => response.json())
+                .then(data => {
+                    if (data && data.length > 0) {
+                        // Create table
+                        const table = document.createElement('table');
+                        table.className = 'table table-hover mb-0';
+                        
+                        // Create table header
+                        const thead = document.createElement('thead');
+                        thead.innerHTML = `
+                            <tr>
+                                <th>#</th>
+                                <th>Product</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        `;
+                        
+                        // Create table body
+                        const tbody = document.createElement('tbody');
+                        
+                        data.forEach(order => {
+                            const tr = document.createElement('tr');
+                            
+                            // Order ID
+                            const tdId = document.createElement('td');
+                            tdId.textContent = order.id;
+                            
+                            // Product
+                            const tdProduct = document.createElement('td');
+                            tdProduct.innerHTML = `
+                                <div class="d-flex align-items-center">
+                                    <div class="me-2" style="width: 40px; height: 40px; overflow: hidden; cursor: pointer;"
+                                         onclick="showProductDetails(${order.productId}, '${order.productImageUrl}', '${order.productName.replace(/'/g, "\\'")}')">
+                                        <img src="${order.productImageUrl}" class="img-fluid" alt="${order.productName}">
+                                    </div>
+                                    <div>
+                                        <span>${order.productName}</span>
+                                        <small class="d-block text-muted">Qty: ${order.quantity}</small>
+                                    </div>
+                                </div>
+                            `;
+                            
+                            // Status with dropdown for changing
+                            const tdStatus = document.createElement('td');
+                            tdStatus.innerHTML = `
+                                <div class="status-wrapper" data-order-id="${order.id}">
+                                    <div class="current-status mb-2">
+                                        ${getStatusBadge(order.status)}
+                                    </div>
+                                    <div class="dropdown status-dropdown">
+                                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                            Change Status
+                                        </button>
+                                        <ul class="dropdown-menu">
+                                            <li><a class="dropdown-item status-option" data-status="OrderReceived" href="#">Order Received</a></li>
+                                            <li><a class="dropdown-item status-option" data-status="OnGoing" href="#">On Going</a></li>
+                
+                                        </ul>
+                                    </div>
+                                </div>
+                            `;
+                            
+                            // Actions
+                            const tdActions = document.createElement('td');
+                            
+                            // Only show complete button if status isn't already completed
+                            if (order.status !== 'Complete') {
+                                tdActions.innerHTML = `
+                                    <button class="btn btn-sm btn-success complete-btn" data-order-id="${order.id}">
+                                        <i class="bi bi-check-circle"></i> Complete
+                                    </button>
+                                `;
+                            } else {
+                                tdActions.innerHTML = `
+                                    <span class="badge bg-success">
+                                        <i class="bi bi-check-circle"></i> Completed
+                                    </span>
+                                `;
+                            }
+                            
+                            // Add columns to row
+                            tr.appendChild(tdId);
+                            tr.appendChild(tdProduct);
+                            tr.appendChild(tdStatus);
+                            tr.appendChild(tdActions);
+                            
+                            // Add row to table body
+                            tbody.appendChild(tr);
+                        });
+                        
+                        // Assemble the table
+                        table.appendChild(thead);
+                        table.appendChild(tbody);
+                        
+                        // Clear and append the table to the container
+                        contentArea.innerHTML = '';
+                        contentArea.appendChild(table);
+                        
+                        // Add event listeners for status changes
+                        const statusOptions = contentArea.querySelectorAll('.status-option');
+                        statusOptions.forEach(option => {
+                            option.addEventListener('click', function(e) {
+                                e.preventDefault();
+                                const orderId = this.closest('.status-wrapper').getAttribute('data-order-id');
+                                const status = this.getAttribute('data-status');
+                                updateOrderStatus(orderId, status);
+                            });
+                        });
+                        
+                        // Add event listeners for complete buttons
+                        const completeButtons = contentArea.querySelectorAll('.complete-btn');
+                        completeButtons.forEach(btn => {
+                            btn.addEventListener('click', function() {
+                                const orderId = this.getAttribute('data-order-id');
+                                completeOrder(orderId);
+                            });
+                        });
+                    } else {
+                        // No assigned orders
+                        contentArea.innerHTML = '<div class="alert alert-info m-3">You have no assigned orders.</div>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading assigned orders:', error);
+                    contentArea.innerHTML = '<div class="alert alert-danger m-3">Failed to load assigned orders. Please try again.</div>';
+                });
+        }
+
+        // Function to complete an order
+        function completeOrder(orderId) {
+            if (!confirm('Are you sure you want to mark this order as completed?')) {
+                return;
+            }
+            
+            fetch(`?handler=CompleteOrder&orderId=${orderId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to complete order');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data && data.success) {
+                    showToast('Order marked as completed and ingredient stock updated!', 'success');
+                    
+                    // Refresh assigned orders and history panels
+                    refreshAssignedOrders();
+                    refreshOrderHistory();
+                } else {
+                    showToast('Failed to complete order: ' + (data.message || 'Unknown error'), 'danger');
+                }
+            })
+            .catch(error => {
+                console.error('Error completing order:', error);
+                showToast('Failed to complete order. Please try again.', 'danger');
+            });
+        }
+
+        // Function to refresh assigned orders panel
+        function refreshAssignedOrders() {
+            // Track that we're refreshing to prevent multiple simultaneous refreshes
+            if (window.isRefreshingAssignedOrders) return;
+            window.isRefreshingAssignedOrders = true;
+            
+            const myTasksPanel = document.getElementById('my-tasks');
+            if (myTasksPanel) {
+                loadAssignedOrdersContent(myTasksPanel);
+            }
+            
+            // Reset the flag after a short delay
+            setTimeout(() => {
+                window.isRefreshingAssignedOrders = false;
+            }, 1000);
+        }
+
+        // Function to refresh order history panel
+        function refreshOrderHistory() {
+            const historyPanel = document.getElementById('orders-history');
+            if (historyPanel) {
+                loadOrderHistoryContent(historyPanel);
+            }
+        }
+        
+        // Function to refresh order panels (new orders)
+        function refreshOrderPanels() {
+            // Track that we're refreshing to prevent multiple simultaneous refreshes
+            if (window.isRefreshingOrderPanels) return;
+            window.isRefreshingOrderPanels = true;
+            
+            const ordersPanel = document.getElementById('orders-panel');
+            if (ordersPanel) {
+                loadOrdersContent(ordersPanel);
+            }
+            
+            // Reset the flag after a short delay
+            setTimeout(() => {
+                window.isRefreshingOrderPanels = false;
+            }, 1000);
+        }
+    </script>
+} 

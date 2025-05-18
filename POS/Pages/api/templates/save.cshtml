@@ -1,0 +1,8 @@
+@page
+@model POS.Pages.api.templates.SaveModel
+@{
+    Layout = null;
+    Response.ContentType = "application/json";
+}
+
+@Json.Serialize(new { success = Model.Success, message = Model.Message }) 

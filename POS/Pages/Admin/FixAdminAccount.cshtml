@@ -1,0 +1,69 @@
+@page
+@model POS.Pages.Admin.FixAdminAccountModel
+@{
+    ViewData["Title"] = "Fix Admin Account";
+}
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Fix Admin Account</h4>
+                </div>
+                <div class="card-body">
+                    @if (!string.IsNullOrEmpty(Model.SuccessMessage))
+                    {
+                        <div class="alert alert-success">
+                            @Model.SuccessMessage
+                        </div>
+                    }
+                    
+                    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+                    {
+                        <div class="alert alert-danger">
+                            @Model.ErrorMessage
+                        </div>
+                    }
+                    
+                    <h5 class="mb-3">Admin Account Details</h5>
+                    <div class="mb-3">
+                        <strong>Current Shift Value:</strong> @Model.CurrentShiftValue
+                    </div>
+                    
+                    @if (Model.AdminAccount != null)
+                    {
+                        <div class="mb-3">
+                            <strong>Current Admin Email:</strong> @Model.AdminAccount.Email
+                        </div>
+                        <div class="mb-3">
+                            <strong>Current Admin Username:</strong> @Model.AdminAccount.UserName
+                        </div>
+                        <div class="mb-3">
+                            <strong>Encrypted Email:</strong> @Model.EncryptedEmail
+                        </div>
+                        <div class="mb-3">
+                            <strong>Decrypted Email (Current):</strong> @Model.DecryptedEmail
+                        </div>
+                    }
+                    
+                    <form method="post">
+                        <div class="mb-3">
+                            <label for="correctEmail" class="form-label">Correct Email:</label>
+                            <input type="email" id="correctEmail" name="correctEmail" value="@Model.CorrectEmail" class="form-control" required />
+                        </div>
+                        <div class="mb-3">
+                            <label for="correctUsername" class="form-label">Correct Username:</label>
+                            <input type="text" id="correctUsername" name="correctUsername" value="@Model.CorrectUsername" class="form-control" required />
+                        </div>
+                        <button type="submit" class="btn btn-primary">Fix Admin Account</button>
+                    </form>
+                </div>
+            </div>
+            
+            <div class="mt-4">
+                <a href="/Admin/Index" class="btn btn-secondary">Back to Admin Dashboard</a>
+            </div>
+        </div>
+    </div>
+</div> 

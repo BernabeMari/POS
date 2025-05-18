@@ -1,0 +1,56 @@
+﻿@page
+@model IndexModel
+@{
+    ViewData["Title"] = "Home";
+}
+
+<div class="text-center">
+    <h1 class="display-4 mt-4">Welcome to POS System</h1>
+    <p class="lead">A customizable point-of-sale system with user-friendly interface.</p>
+    
+    <div class="row mt-5">
+        <div class="col-md-6 offset-md-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h2 class="card-title">Get Started</h2>
+                    <p class="card-text">Sign in to access your customized dashboard and start working with the system.</p>
+                    
+                    <div class="mt-4">
+                        <a href="/Login" class="btn btn-primary me-2">Login</a>
+                        <a href="/Register" class="btn btn-outline-primary">Register</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mt-5">
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="bi bi-shield-lock fs-1 text-primary mb-3"></i>
+                    <h3>Secure Access</h3>
+                    <p>Role-based security ensures that users only have access to the features they need.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="bi bi-brush fs-1 text-primary mb-3"></i>
+                    <h3>Customizable UI</h3>
+                    <p>Administrators can customize the appearance and layout of the application.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="bi bi-database fs-1 text-primary mb-3"></i>
+                    <h3>Cloud Database</h3>
+                    <p>All your data is securely stored in the cloud for reliable access from anywhere.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

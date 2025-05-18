@@ -1,0 +1,2796 @@
+@page
+@model POS.Areas.Admin.Pages.PageEditorModel
+@{
+    ViewData["Title"] = "Page Editor";
+}
+
+@Html.AntiForgeryToken()
+
+<div class="container-fluid mt-3">
+    <div class="row">
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Page Templates</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="nav nav-pills flex-column">
+                        <li class="nav-item">
+                            <a class="nav-link @(Model.CurrentPage == "Login" ? "active" : "")" 
+                               asp-page="/PageEditor" asp-route-CurrentPage="Login">Login Page</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link @(Model.CurrentPage == "Register" ? "active" : "")" 
+                               asp-page="/PageEditor" asp-route-CurrentPage="Register">Register Page</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link @(Model.CurrentPage == "Dashboard" ? "active" : "")" 
+                               asp-page="/PageEditor" asp-route-CurrentPage="Dashboard">User Dashboard</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link @(Model.CurrentPage == "MyOrders" ? "active" : "")" 
+                               asp-page="/PageEditor" asp-route-CurrentPage="MyOrders">My Orders Page</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link @(Model.CurrentPage == "EmployeeDashboard" ? "active" : "")" 
+                               asp-page="/PageEditor" asp-route-CurrentPage="EmployeeDashboard">Cashier Dashboard</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link @(Model.CurrentPage == "ManagerDashboard" ? "active" : "")" 
+                               asp-page="/PageEditor" asp-route-CurrentPage="ManagerDashboard">Manager Dashboard</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link @(Model.CurrentPage == "AssistantManagerDashboard" ? "active" : "")" 
+                               asp-page="/PageEditor" asp-route-CurrentPage="AssistantManagerDashboard">Assistant Manager Dashboard</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link @(Model.CurrentPage == "InventoryClerkDashboard" ? "active" : "")" 
+                               asp-page="/PageEditor" asp-route-CurrentPage="InventoryClerkDashboard">Inventory Clerk Dashboard</a>
+                        </li>
+                    </ul>
+
+                    <div class="mt-4">
+                        <label for="canvasBackgroundColor" class="form-label">Background Color:</label>
+                        <input type="color" id="canvasBackgroundColor" class="form-control form-control-color" value="@Model.BackgroundColor">
+                    </div>
+
+                    <div class="mt-4">
+                        <button type="button" class="btn btn-success w-100" id="saveTemplate">Save Template</button>
+                    </div>
+                    
+                    <div class="mt-2">
+                        <button type="button" class="btn btn-primary w-100" id="previewTemplate">Preview</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5>Element Properties</h5>
+                </div>
+                <div class="card-body" id="elementProperties">
+                    <p class="text-muted">Select an element to edit its properties</p>
+                    
+                    <div id="propertiesForm" style="display: none;">
+                        <div class="mb-3">
+                            <label for="elementText" class="form-label">Text</label>
+                            <input type="text" class="form-control" id="elementText">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="elementColor" class="form-label">Color</label>
+                            <input type="color" class="form-control" id="elementColor">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="elementWidth" class="form-label">Width (px)</label>
+                            <input type="number" class="form-control" id="elementWidth" min="50" max="800">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="elementHeight" class="form-label">Height (px)</label>
+                            <input type="number" class="form-control" id="elementHeight" min="20" max="400">
+                        </div>
+                        
+                        <div class="mb-3" id="imageUrlContainer" style="display: none;">
+                            <label for="imageUrl" class="form-label">Image URL</label>
+                            <input type="text" class="form-control" id="imageUrl">
+                            <div class="mt-2">
+                                <label for="imageUpload" class="form-label">Or upload an image</label>
+                                <input type="file" class="form-control" id="imageUpload" accept="image/*">
+                                <div class="mt-2">
+                                    <button type="button" class="btn btn-sm btn-primary" id="uploadImageBtn">Upload Image</button>
+                                </div>
+                                <div class="mt-2" id="uploadPreview" style="display: none;">
+                                    <img id="previewImage" src="" style="max-width: 100%; max-height: 150px;">
+                                </div>
+                            </div>
+                            <div class="form-check mt-2">
+                                <input class="form-check-input" type="checkbox" id="lockAspectRatio">
+                                <label class="form-check-label" for="lockAspectRatio">
+                                    Lock aspect ratio when resizing
+                                </label>
+                            </div>
+                            <div class="mt-2 alert alert-info small">
+                                <strong>Image Resize Tips:</strong>
+                                <ul class="mb-0 ps-3">
+                                    <li>Drag any edge or corner to resize</li>
+                                    <li>Hold <kbd>Shift</kbd> while resizing to maintain aspect ratio</li>
+                                    <li>Press <kbd>A</kbd> to toggle aspect ratio lock</li>
+                                    <li>Dimensions display while resizing</li>
+                                </ul>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3" id="multipleImagesContainer" style="display: none;">
+                            <label class="form-label">Multiple Images</label>
+                            <div class="mb-2">
+                                <input type="file" class="form-control" id="multipleImagesUpload" accept="image/*" multiple>
+                            </div>
+                            <div class="mb-2">
+                                <button type="button" class="btn btn-sm btn-primary" id="uploadMultipleImagesBtn">Upload Images</button>
+                            </div>
+                            <div id="multipleImagesPreview" class="row mt-2">
+                                <!-- Preview images will be added here -->
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3" id="imageDescriptionContainer" style="display: none;">
+                            <label for="imageDescription" class="form-label">Image Description</label>
+                            <textarea class="form-control" id="imageDescription" rows="2"></textarea>
+                        </div>
+                        
+                        <!-- Product Information Section (for dashboard images) -->
+                        <div class="mb-3" id="productInfoContainer" style="display: none;">
+                            <div class="card">
+                                <div class="card-body" id="productDetailsForm">
+                                    <div class="mb-3">
+                                        <label for="productName" class="form-label">Product Name</label>
+                                        <input type="text" class="form-control" id="productName">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="productDescription" class="form-label">Product Description</label>
+                                        <textarea class="form-control" id="productDescription" rows="2"></textarea>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="productPrice" class="form-label">Price ($)</label>
+                                        <input type="number" class="form-control" id="productPrice" min="0" step="0.01">
+                                    </div>
+                                    <div class="mb-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="productAvailable" checked>
+                                            <label class="form-check-label" for="productAvailable">
+                                                Product is available for ordering
+                                            </label>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Product Ingredients Section -->
+                                    <div class="mb-3" id="productIngredientsContainer">
+                                        <div class="card mt-3">
+                                            <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+                                                <h6 class="mb-0">Product Ingredients</h6>
+                                                <button type="button" class="btn btn-sm btn-light" id="addIngredientBtn">
+                                                    <i class="bi bi-plus"></i> Add Ingredient
+                                                </button>
+                                            </div>
+                                            <div class="card-body p-0">
+                                                <div class="alert alert-info m-3 small" id="noIngredientsMsg">
+                                                    <i class="bi bi-info-circle-fill me-2"></i>
+                                                    No ingredients added yet. Use the "Add Ingredient" button to specify ingredients.
+                                                </div>
+                                                <div class="table-responsive">
+                                                    <table class="table table-sm table-hover mb-0" id="ingredientsTable" style="display: none;">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>Ingredient Name</th>
+                                                                <th>Quantity</th>
+                                                                <th>Unit</th>
+                                                                <th>Notes</th>
+                                                                <th>Actions</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody id="ingredientsList">
+                                                            <!-- Ingredients will be added here dynamically -->
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="elementStyles" class="form-label">Additional Styles</label>
+                            <textarea class="form-control" id="elementStyles" rows="3"></textarea>
+                        </div>
+                        
+                        <button type="button" class="btn btn-primary" id="applyProperties">Apply</button>
+                        <button type="button" class="btn btn-danger" id="deleteElement" style="display: none;">Delete</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Dashboard Element Options -->
+            <div class="card mt-3" id="addElementSection" style="display: none;">
+                <div class="card-header">
+                    <h5>Add Elements</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-2">
+                        <button class="btn btn-outline-primary w-100 mb-2" id="addLabelBtn">Add Label</button>
+                    </div>
+                    <div class="mb-2">
+                        <button class="btn btn-outline-primary w-100 mb-2" id="addButtonBtn">Add Button</button>
+                    </div>
+                    <div class="mb-2">
+                        <button class="btn btn-outline-primary w-100 mb-2" id="addContentPanelBtn">Add Content Panel</button>
+                    </div>
+                    <div class="mb-2">
+                        <button class="btn btn-outline-primary w-100" id="addImageBtn">Add Product</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-9">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5>Designer - @Model.CurrentPage Page</h5>
+                    <div>
+                        <button class="btn btn-sm btn-outline-secondary" id="toggleGrid">Toggle Grid</button>
+                        <button class="btn btn-sm btn-outline-secondary" id="toggleSnap">Snap to Grid: Off</button>
+                        <div class="btn-group mx-2" style="z-index: 100;">
+                            <button class="btn btn-sm btn-outline-primary" id="zoomOut" title="Zoom Out" style="cursor: pointer; min-width: 40px;" 
+                                    onclick="
+                                        console.log('Zoom out clicked directly');
+                                        if (currentZoomLevel > 0.5) {
+                                            currentZoomLevel -= 0.1;
+                                            applyCanvasZoom(currentZoomLevel);
+                                        }
+                                        return false;
+                                    ">-</button>
+                            <button class="btn btn-sm btn-outline-primary" id="resetZoom" title="Reset Zoom" style="cursor: pointer; min-width: 60px;" 
+                                    onclick="
+                                        console.log('Reset zoom clicked directly');
+                                        currentZoomLevel = 1;
+                                        applyCanvasZoom(currentZoomLevel);
+                                        return false;
+                                    ">100%</button>
+                            <button class="btn btn-sm btn-outline-primary" id="zoomIn" title="Zoom In" style="cursor: pointer; min-width: 40px;" 
+                                    onclick="
+                                        console.log('Zoom in clicked directly');
+                                        if (currentZoomLevel < 1.5) {
+                                            currentZoomLevel += 0.1;
+                                            applyCanvasZoom(currentZoomLevel);
+                                        }
+                                        return false;
+                                    ">+</button>
+                        </div>
+                        <button class="btn btn-sm btn-outline-primary" id="resetElements">Reset to Default</button>
+                    </div>
+                </div>
+                <div class="card-body" style="overflow: visible;">
+                    <div id="registerPageWarning" class="alert alert-warning mb-3" style="display: none;">
+                        <i class="fas fa-exclamation-triangle"></i> 
+                        The signup page requires all these fields. You can only modify their properties (position, color, size, text),
+                        but you cannot add or remove fields.
+                    </div>
+                    <div id="employeeDashboardWarning" class="alert alert-info mb-3" style="display: none;">
+                        <i class="fas fa-info-circle"></i> 
+                        <strong>Cashier Dashboard Components:</strong>
+                        <ul class="mb-0 mt-2">
+                            <li><strong>orders-panel</strong> - Displays new orders that haven't been assigned yet</li>
+                            <li><strong>my-tasks</strong> - Shows orders assigned to this employee</li>
+                            <li><strong>orders-history</strong> - Lists completed and cancelled orders</li>
+                        </ul>
+                        <p class="mb-0 mt-2">These components have special functionality and are required. You can reposition and resize them, but please don't remove them.</p>
+                    </div>
+                    <div id="dashboardWarning" class="alert alert-info mb-3" style="display: none;">
+                        <i class="fas fa-info-circle"></i> 
+                        <strong>User Dashboard Components:</strong>
+                        <ul class="mb-0 mt-2">
+                            <li><strong>my-orders-button</strong> - Button that redirects users to their order history page</li>
+                        </ul>
+                        <p class="mb-0 mt-2">These components have special functionality and are required. You can reposition and resize them, but please don't remove them.</p>
+                    </div>
+                    <div id="designCanvas" class="position-relative border" style="height: 600px; background-color: #f8f9fa; min-width: 100%; overflow: visible;">
+                        <!-- Elements will be added dynamically based on the template -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast container for notifications -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+    <div id="toast-container"></div>
+</div>
+
+@section Scripts {
+    <script>
+        let currentElement = null;
+        let elements = [];
+        let snapToGrid = false;
+        let gridSize = 20; // Grid size in pixels
+        let currentZoomLevel = 1; // Track zoom level globally
+        
+        // Default elements for pages if no template exists
+        const defaultElements = {
+            'Login': [
+                { id: 'email-input', type: 'InputField', text: 'Email', x: 100, y: 100, width: 300, height: 40, color: '#000000' },
+                { id: 'password-input', type: 'InputField', text: 'Password', x: 100, y: 160, width: 300, height: 40, color: '#000000' },
+                { id: 'login-button', type: 'Button', text: 'Login', x: 100, y: 220, width: 300, height: 40, color: '#007bff' },
+                { id: 'signup-link', type: 'Label', text: 'Don\'t have an account? Register here', x: 100, y: 280, width: 300, height: 20, color: '#007bff' }
+            ],
+            'Register': [
+                // These are added from server-side DefaultRegisterElements
+            ],
+            'Dashboard': [
+                // These are added from server-side DefaultDashboardElements
+                {
+                    id: 'my-orders-button',
+                    type: 'Button',
+                    text: 'My Orders',
+                    x: 830,
+                    y: 20,
+                    width: 120,
+                    height: 40,
+                    color: '#0d6efd',
+                    additionalStyles: 'font-weight: 500; border-radius: 4px;',
+                    linkUrl: '/MyOrders'
+                },
+                {
+                    id: 'welcome-panel',
+                    type: 'ContentPanel',
+                    text: 'Welcome to Your Dashboard',
+                    x: 20,
+                    y: 80,
+                    width: 500,
+                    height: 200,
+                    color: '#f8f9fa',
+                    additionalStyles: 'border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.1); padding: 15px;'
+                },
+                {
+                    id: 'featured-products',
+                    type: 'ContentPanel',
+                    text: 'Featured Products',
+                    x: 540,
+                    y: 80,
+                    width: 400,
+                    height: 200,
+                    color: '#f8f9fa',
+                    additionalStyles: 'border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.1); padding: 15px;'
+                }
+            ],
+            'MyOrders': [
+                // These are added from server-side DefaultMyOrdersElements
+            ],
+            'EmployeeDashboard': [
+                // These are added from server-side DefaultEmployeeDashboardElements
+            ],
+            'ManagerDashboard': [
+                // Header section
+                { id: 'welcome-label', type: 'Label', text: 'Manager Dashboard', x: 20, y: 20, width: 400, height: 40, color: '#343a40' },
+                { id: 'manager-status', type: 'Label', text: 'Logged in as Manager', x: 620, y: 20, width: 300, height: 30, color: '#6c757d' },
+                { id: 'logout-button', type: 'Button', text: 'Logout', x: 830, y: 20, width: 100, height: 40, color: '#dc3545' },
+                
+                // Store Performance Panel
+                { id: 'store-performance', type: 'ContentPanel', text: 'Store Performance', x: 20, y: 80, width: 600, height: 300, color: '#f8f9fa', 
+                  additionalStyles: 'border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.1);' },
+                
+                // Staff Activity Panel
+                { id: 'staff-activity', type: 'ContentPanel', text: 'Staff Activity', x: 640, y: 80, width: 320, height: 300, color: '#f8f9fa', 
+                  additionalStyles: 'border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.1);' },
+                
+                // Recent Orders Panel
+                { id: 'recent-orders', type: 'ContentPanel', text: 'Recent Orders', x: 20, y: 400, width: 600, height: 250, color: '#f8f9fa', 
+                  additionalStyles: 'border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.1);' },
+                
+                // Inventory Alerts Panel
+                { id: 'inventory-alerts', type: 'ContentPanel', text: 'Inventory Alerts', x: 640, y: 400, width: 320, height: 250, color: '#f8f9fa', 
+                  additionalStyles: 'border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.1);' }
+            ],
+            'AssistantManagerDashboard': [
+                // Header section
+                { id: 'welcome-label', type: 'Label', text: 'Assistant Manager Dashboard', x: 20, y: 20, width: 400, height: 40, color: '#343a40' },
+                { id: 'assistant-manager-status', type: 'Label', text: 'Logged in as Assistant Manager', x: 620, y: 20, width: 300, height: 30, color: '#6c757d' },
+                { id: 'logout-button', type: 'Button', text: 'Logout', x: 830, y: 20, width: 100, height: 40, color: '#dc3545' },
+                
+                // Staff Activity Panel - Moved to the left side
+                { id: 'staff-activity', type: 'ContentPanel', text: 'Staff Activity', x: 20, y: 80, width: 450, height: 300, color: '#f8f9fa', 
+                  additionalStyles: 'border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.1);' },
+                
+                // Inventory Alerts Panel - Moved to the right side
+                { id: 'inventory-alerts', type: 'ContentPanel', text: 'Inventory Alerts', x: 490, y: 80, width: 450, height: 300, color: '#f8f9fa', 
+                  additionalStyles: 'border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.1);' },
+                
+                // Recent Orders Panel - Widened
+                { id: 'recent-orders', type: 'ContentPanel', text: 'Recent Orders', x: 20, y: 400, width: 920, height: 250, color: '#f8f9fa', 
+                  additionalStyles: 'border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.1);' }
+            ],
+            'InventoryClerkDashboard': [
+                // Header section
+                { id: 'welcome-label', type: 'Label', text: 'Inventory Clerk Dashboard', x: 20, y: 20, width: 400, height: 40, color: '#343a40' },
+                { id: 'inventory-clerk-status', type: 'Label', text: 'Logged in as Inventory Clerk', x: 580, y: 20, width: 340, height: 30, color: '#6c757d' },
+                { id: 'logout-button', type: 'Button', text: 'Logout', x: 830, y: 20, width: 100, height: 40, color: '#dc3545' },
+                
+                // Product Inventory Panel
+                { id: 'product-inventory', type: 'ContentPanel', text: 'Product Inventory', x: 20, y: 80, width: 700, height: 400, color: '#f8f9fa', 
+                  additionalStyles: 'border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.1);' },
+                
+                // Inventory Summary Panel
+                { id: 'inventory-summary', type: 'ContentPanel', text: 'Inventory Summary', x: 740, y: 80, width: 220, height: 150, color: '#f8f9fa', 
+                  additionalStyles: 'border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.1);' },
+                
+                // Pending Orders Panel
+                { id: 'pending-orders', type: 'ContentPanel', text: 'Pending Orders', x: 740, y: 250, width: 220, height: 200, color: '#f8f9fa', 
+                  additionalStyles: 'border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.1);' },
+                
+                // Quick Actions Panel
+                { id: 'quick-actions', type: 'ContentPanel', text: 'Quick Actions', x: 740, y: 470, width: 220, height: 180, color: '#f8f9fa', 
+                  additionalStyles: 'border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.1);' }
+            ]
+        };
+        
+        // Document ready function
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize canvas background color picker
+            const colorPicker = document.getElementById('canvasBackgroundColor');
+            const designCanvas = document.getElementById('designCanvas');
+            if (colorPicker && designCanvas) {
+                // Set initial color from model
+                colorPicker.value = '@Model.BackgroundColor';
+                // Apply initial background color to canvas
+                designCanvas.style.backgroundColor = colorPicker.value;
+
+                // Add event listeners to update canvas background color live
+                // Use both 'change' and 'input' events to ensure real-time updates
+                colorPicker.addEventListener('change', function(e) {
+                    designCanvas.style.backgroundColor = e.target.value;
+                });
+                
+                colorPicker.addEventListener('input', function(e) {
+                    designCanvas.style.backgroundColor = e.target.value;
+                });
+            }
+            
+            // Load template elements
+            const templateElements = @Html.Raw(Model.TemplateElementsJson ?? "[]");
+            elements = templateElements;
+            
+            // Render elements on canvas
+            renderElements();
+            
+            // Initialize zoom functionality first to ensure it's ready
+            initializeZoom();
+            
+            // Show instructions based on the current page
+            showPageSpecificInstructions('@Model.CurrentPage');
+
+            // Directly attach event listeners to zoom buttons
+            const zoomInBtn = document.querySelector('#zoomIn');
+            const zoomOutBtn = document.querySelector('#zoomOut');
+            const resetZoomBtn = document.querySelector('#resetZoom');
+            
+            if (zoomInBtn) {
+                zoomInBtn.addEventListener('click', function() {
+                    console.log('Zoom in clicked');
+                    if (currentZoomLevel < 1.5) {
+                        currentZoomLevel += 0.1;
+                        applyCanvasZoom(currentZoomLevel);
+                    }
+                });
+            }
+            
+            if (zoomOutBtn) {
+                zoomOutBtn.addEventListener('click', function() {
+                    console.log('Zoom out clicked');
+                    if (currentZoomLevel > 0.5) {
+                        currentZoomLevel -= 0.1;
+                        applyCanvasZoom(currentZoomLevel);
+                    }
+                });
+            }
+            
+            if (resetZoomBtn) {
+                resetZoomBtn.addEventListener('click', function() {
+                    console.log('Reset zoom clicked');
+                    currentZoomLevel = 1;
+                    applyCanvasZoom(currentZoomLevel);
+                });
+            }
+        });
+        
+        // Show page specific instructions
+        function showPageSpecificInstructions(pageType) {
+            // Hide all warnings first
+            document.getElementById('registerPageWarning')?.style.setProperty('display', 'none');
+            document.getElementById('employeeDashboardWarning')?.style.setProperty('display', 'none');
+            document.getElementById('dashboardWarning')?.style.setProperty('display', 'none');
+            
+            // Show specific warnings based on page type
+            if (pageType === 'Register') {
+                document.getElementById('registerPageWarning')?.style.setProperty('display', 'block');
+            } else if (pageType === 'EmployeeDashboard') {
+                document.getElementById('employeeDashboardWarning')?.style.setProperty('display', 'block');
+            } else if (pageType === 'Dashboard') {
+                document.getElementById('dashboardWarning')?.style.setProperty('display', 'block');
+            }
+            
+            // Show appropriate element addition section
+            const addElementSection = document.getElementById('addElementSection');
+            if (addElementSection) {
+                if (pageType === 'Register') {
+                    addElementSection.style.display = 'none'; // Can't add elements to Register page
+                } else {
+                    addElementSection.style.display = 'block';
+                }
+            }
+        }
+        
+        // Load the elements based on the current page
+        function loadPageElements(pageName) {
+            // Check if we have saved elements from the server
+            const savedElements = @Html.Raw(Model.TemplateElementsJson.Length > 0 ? Model.TemplateElementsJson : "null");
+            
+            if (savedElements && savedElements.length > 0) {
+                elements = savedElements;
+                
+                // Process elements to ensure product data is preserved
+                elements.forEach(element => {
+                    if (element.type === 'Image') {
+                        // Ensure all images are treated as products
+                        element.isProduct = true;
+                        
+                        // Initialize product properties if they don't exist
+                        if (!element.productName) element.productName = '';
+                        if (!element.productDescription) element.productDescription = '';
+                        if (!element.productPrice) element.productPrice = 0;
+                        if (!element.ingredients) element.ingredients = [];
+                    }
+                });
+                
+                // For Register page, ensure all required fields are present
+                if (pageName === 'Register') {
+                    const requiredFieldIds = defaultElements.Register.map(e => e.id);
+                    const missingFields = requiredFieldIds.filter(id => !elements.some(e => e.id === id));
+                    
+                    if (missingFields.length > 0) {
+                        // Add any missing required fields
+                        missingFields.forEach(id => {
+                            const defaultField = defaultElements.Register.find(e => e.id === id);
+                            elements.push({...defaultField});
+                        });
+                    }
+                }
+                
+                // For EmployeeDashboard, remove status update elements if they exist
+                if (pageName === 'EmployeeDashboard') {
+                    const elementsToRemove = [
+                        'status-update-label', 
+                        'order-id-input', 
+                        'status-dropdown', 
+                        'update-status-button', 
+                        'notifications-toggle',
+                        'toggle-notification',
+                        'quick-status-update',
+                        'status-label',
+                        'order-id-label'
+                    ];
+                    elements = elements.filter(el => !elementsToRemove.includes(el.id));
+                }
+            } else {
+                // Use default elements if no saved elements
+                elements = [...defaultElements[pageName]];
+            }
+            
+            renderElements();
+            
+            // Update UI based on page type
+            updatePageSpecificUI(pageName);
+        }
+        
+        // Render all elements on the canvas
+        function renderElements() {
+            const canvas = document.getElementById('designCanvas');
+            canvas.innerHTML = '';
+            
+            // Adjust canvas height for Employee Dashboard
+            if ('@Model.CurrentPage' === 'EmployeeDashboard') {
+                canvas.style.height = '700px';
+            } else {
+                canvas.style.height = '600px';
+            }
+            
+            elements.forEach(element => {
+                // Ensure x and y are integers
+                element.x = Math.round(Number(element.x));
+                element.y = Math.round(Number(element.y));
+                element.width = Math.round(Number(element.width));
+                element.height = Math.round(Number(element.height));
+                
+                // Ensure all image elements are marked as products
+                if (element.type === 'Image') {
+                    element.isProduct = true;
+                    
+                    // Initialize product properties if they don't exist
+                    if (!element.productName) element.productName = '';
+                    if (!element.productDescription) element.productDescription = '';
+                    if (!element.productPrice) element.productPrice = 0;
+                    if (!element.ingredients) element.ingredients = [];
+                }
+                
+                const elementDiv = document.createElement('div');
+                elementDiv.className = 'position-absolute border element-item';
+                elementDiv.id = element.id;
+                elementDiv.style.left = element.x + 'px';
+                elementDiv.style.top = element.y + 'px';
+                elementDiv.style.width = element.width + 'px';
+                elementDiv.style.height = element.height + 'px';
+                elementDiv.style.color = element.color;
+                elementDiv.style.backgroundColor = element.type === 'Button' ? element.color : 'transparent';
+                elementDiv.style.color = element.type === 'Button' ? '#fff' : element.color;
+                elementDiv.style.display = 'flex';
+                elementDiv.style.alignItems = 'center';
+                elementDiv.style.padding = '0 10px';
+                elementDiv.style.cursor = 'move';
+                
+                // Add resize handles to the element
+                const resizeHandles = ['n', 'e', 's', 'w', 'ne', 'se', 'sw', 'nw'];
+                resizeHandles.forEach(dir => {
+                    const handle = document.createElement('div');
+                    handle.className = `resize-handle resize-${dir}`;
+                    handle.dataset.direction = dir;
+                    handle.addEventListener('mousedown', function(e) {
+                        startResize(e, dir);
+                    });
+                    elementDiv.appendChild(handle);
+                });
+                
+                if (element.type === 'InputField') {
+                    const label = document.createElement('label');
+                    label.innerText = element.text;
+                    label.style.marginRight = '10px';
+                    elementDiv.appendChild(label);
+                    
+                    const input = document.createElement('input');
+                    input.type = element.id.includes('password') ? 'password' : 'text';
+                    input.className = 'form-control';
+                    input.style.pointerEvents = 'none'; // Prevent interaction in editor
+                    elementDiv.appendChild(input);
+                } else if (element.type === 'Checkbox') {
+                    const checkboxContainer = document.createElement('div');
+                    checkboxContainer.className = 'd-flex align-items-center';
+                    
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.className = 'form-check-input me-2';
+                    checkbox.style.pointerEvents = 'none';
+                    
+                    const label = document.createElement('label');
+                    label.innerText = element.text;
+                    label.className = 'form-check-label';
+                    
+                    checkboxContainer.appendChild(checkbox);
+                    checkboxContainer.appendChild(label);
+                    elementDiv.appendChild(checkboxContainer);
+                } else if (element.type === 'Button') {
+                    elementDiv.className += ' btn';
+                    elementDiv.innerText = element.text;
+                    elementDiv.style.justifyContent = 'center';
+                } else if (element.type === 'Label') {
+                    elementDiv.innerText = element.text;
+                    if (element.id.includes('link')) {
+                        elementDiv.style.color = '#007bff';
+                        elementDiv.style.textDecoration = 'underline';
+                        elementDiv.style.cursor = 'pointer';
+                    }
+                } else if (element.type === 'ContentPanel') {
+                    elementDiv.innerText = element.text;
+                    elementDiv.style.backgroundColor = '#f8f9fa';
+                    elementDiv.style.padding = '20px';
+                    elementDiv.style.border = '1px dashed #ccc';
+                } else if (element.type === 'Image') {
+                    elementDiv.innerHTML = '';
+                    // Handle both URL and Base64 images
+                    if (element.imageUrl) {
+                        // Check if it's a Base64 image or a URL
+                        if (element.imageUrl.startsWith('data:image/')) {
+                            // Base64 image
+                            elementDiv.style.backgroundImage = `url(${element.imageUrl})`;
+                        } else {
+                            // Regular URL
+                            elementDiv.style.backgroundImage = `url(${element.imageUrl})`;
+                        }
+                    } else {
+                        // Placeholder if no image is set
+                        elementDiv.style.backgroundColor = '#f0f0f0';
+                        elementDiv.innerHTML = '<div class="d-flex justify-content-center align-items-center h-100">No Image</div>';
+                    }
+                    
+                    elementDiv.style.backgroundSize = 'cover';
+                    elementDiv.style.backgroundPosition = 'center';
+                    elementDiv.style.border = '1px solid #ddd';
+                    
+                    // Store original aspect ratio if not already stored
+                    if (element.imageUrl && !element.aspectRatio) {
+                        // Create a temporary image to calculate aspect ratio
+                        const tempImg = new Image();
+                        
+                        // Fix malformed data URLs - add semicolon if missing between type and encoding
+                        let imgUrl = element.imageUrl;
+                        if (imgUrl && imgUrl.startsWith('data:image/')) {
+                            // Fix common error: missing semicolon between media type and encoding
+                            imgUrl = imgUrl.replace(/^(data:image\/[a-z]+)base64,/i, '$1;base64,');
+                            // Store the corrected URL back in the element
+                            element.imageUrl = imgUrl;
+                            console.log('Fixed malformed data URL');
+                        }
+                        
+                        tempImg.src = imgUrl;
+                        // Add error handling for image loading
+                        tempImg.onerror = function() {
+                            console.error('Failed to load image:', element.imageUrl);
+                            // Set a fallback image or placeholder
+                            elementDiv.style.backgroundImage = `url('/images/image-placeholder.png')`;
+                            // Add a warning indicator
+                            const errorBadge = document.createElement('div');
+                            errorBadge.className = 'position-absolute';
+                            errorBadge.style.top = '5px';
+                            errorBadge.style.left = '5px';
+                            errorBadge.style.backgroundColor = 'rgba(255, 193, 7, 0.8)';
+                            errorBadge.style.color = 'black';
+                            errorBadge.style.padding = '3px 8px';
+                            errorBadge.style.borderRadius = '3px';
+                            errorBadge.style.fontSize = '10px';
+                            errorBadge.innerHTML = '<i class="bi bi-exclamation-triangle"></i> Image Error';
+                            elementDiv.appendChild(errorBadge);
+                        };
+                        tempImg.onload = function() {
+                            element.aspectRatio = tempImg.width / tempImg.height;
+                            element.originalWidth = tempImg.width;
+                            element.originalHeight = tempImg.height;
+                            
+                            // Ensure the image is correctly displayed in the background
+                            if (element.imageUrl.startsWith('data:image')) {
+                                elementDiv.style.backgroundImage = `url('${element.imageUrl}')`;
+                            } else {
+                                // For non-base64 images, ensure URL is properly formatted
+                                // Remove any double slashes except after protocol
+                                const cleanUrl = element.imageUrl.replace(/(https?:\/\/)|(\/)+/g, function(match, protocol) {
+                                    return protocol || '/';
+                                });
+                                elementDiv.style.backgroundImage = `url('${cleanUrl}')`;
+                            }
+                        };
+                    }
+                    
+                    // Add additional resize indicator specifically for images
+                    const resizeInfo = document.createElement('div');
+                    resizeInfo.className = 'image-resize-info';
+                    resizeInfo.innerHTML = `<i class="bi bi-arrows-angle-expand"></i>`;
+                    resizeInfo.style.position = 'absolute';
+                    resizeInfo.style.bottom = '5px';
+                    resizeInfo.style.left = '5px';
+                    resizeInfo.style.backgroundColor = 'rgba(0,0,0,0.5)';
+                    resizeInfo.style.color = 'white';
+                    resizeInfo.style.padding = '2px 6px';
+                    resizeInfo.style.borderRadius = '3px';
+                    resizeInfo.style.fontSize = '10px';
+                    resizeInfo.style.display = 'none';
+                    elementDiv.appendChild(resizeInfo);
+                    
+                    // Add a product indicator for images that represent products
+                    if (element.isProduct) {
+                        // Availability badge
+                        const availabilityIndicator = document.createElement('div');
+                        availabilityIndicator.className = 'position-absolute';
+                        availabilityIndicator.style.top = '5px';
+                        availabilityIndicator.style.right = '5px';
+                        availabilityIndicator.style.backgroundColor = element.isAvailable ? 'rgba(40, 167, 69, 0.8)' : 'rgba(220, 53, 69, 0.8)';
+                        availabilityIndicator.style.color = 'white';
+                        availabilityIndicator.style.padding = '3px 8px';
+                        availabilityIndicator.style.borderRadius = '3px';
+                        availabilityIndicator.style.fontSize = '10px';
+                        availabilityIndicator.innerHTML = '<i class="bi bi-cart"></i> ' + (element.isAvailable ? 'PRODUCT' : 'UNAVAILABLE');
+                        elementDiv.appendChild(availabilityIndicator);
+                        
+                        // Add quick toggle for availability
+                        const toggleAvailability = document.createElement('div');
+                        toggleAvailability.className = 'position-absolute';
+                        toggleAvailability.style.top = '30px';
+                        toggleAvailability.style.right = '5px';
+                        toggleAvailability.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+                        toggleAvailability.style.color = 'white';
+                        toggleAvailability.style.padding = '3px 8px';
+                        toggleAvailability.style.borderRadius = '3px';
+                        toggleAvailability.style.fontSize = '10px';
+                        toggleAvailability.style.cursor = 'pointer';
+                        toggleAvailability.innerHTML = element.isAvailable ? 
+                            '<i class="bi bi-toggle-on"></i> Make Unavailable' : 
+                            '<i class="bi bi-toggle-off"></i> Make Available';
+                        
+                        // Add click event to toggle availability
+                        toggleAvailability.addEventListener('click', function(e) {
+                            e.stopPropagation(); // Prevent selecting the element
+                            
+                            // Toggle the availability in the element data
+                            element.isAvailable = !element.isAvailable;
+                            
+                            // Send the updated availability to the server
+                            const headers = {
+                                'Content-Type': 'application/json'
+                            };
+                            
+                            // Add anti-forgery token if it exists
+                            const tokenElement = document.querySelector('input[name="__RequestVerificationToken"]');
+                            if (tokenElement) {
+                                headers['RequestVerificationToken'] = tokenElement.value;
+                            }
+
+                            // Get element database ID (added in the server-side serialization)
+                            const elementId = element.dbId;
+                            
+                            // Check if we have a valid element ID
+                            if (!elementId) {
+                                console.error('Missing database ID for element:', element.id);
+                                showToast('Failed to update availability: Missing database ID', 'danger');
+                                return;
+                            }
+                            
+                            fetch('/api/products/toggle-availability', {
+                                method: 'POST',
+                                headers: headers,
+                                body: JSON.stringify({
+                                    elementId: elementId,
+                                    isAvailable: element.isAvailable
+                                })
+                            })
+                            .then(response => {
+                                if (!response.ok) {
+                                    return response.json().then(data => {
+                                        throw new Error(data.message || 'Server error');
+                                    });
+                                }
+                                return response.json();
+                            })
+                            .then(data => {
+                                if (data.success) {
+                                    // Update the UI
+                                    renderElements();
+                                    
+                                    // Show a toast message
+                                    showToast(data.message, 'success');
+                                } else {
+                                    // Show error message
+                                    showToast(`Failed to update availability: ${data.message}`, 'danger');
+                                    
+                                    // Revert the change in the local data
+                                    element.isAvailable = !element.isAvailable;
+                                    renderElements();
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Error updating availability:', error);
+                                showToast(`Failed to update availability: ${error.message || 'Please try again.'}`, 'danger');
+                                
+                                // Revert the change in the local data
+                                element.isAvailable = !element.isAvailable;
+                                renderElements();
+                            });
+                        });
+                        
+                        elementDiv.appendChild(toggleAvailability);
+                        
+                        // Add price if available
+                        if (element.productPrice) {
+                            const priceTag = document.createElement('div');
+                            priceTag.className = 'position-absolute';
+                            priceTag.style.top = '30px';
+                            priceTag.style.right = '5px';
+                            priceTag.style.backgroundColor = 'rgba(0, 123, 255, 0.8)';
+                            priceTag.style.color = 'white';
+                            priceTag.style.padding = '3px 8px';
+                            priceTag.style.borderRadius = '3px';
+                            priceTag.style.fontSize = '12px';
+                            priceTag.style.fontWeight = 'bold';
+                            priceTag.innerHTML = `$${parseFloat(element.productPrice).toFixed(2)}`;
+                            elementDiv.appendChild(priceTag);
+                        }
+                    }
+                }
+                
+                // Add required indicator if applicable
+                if (element.required) {
+                    elementDiv.style.position = 'relative';
+                    const requiredMarker = document.createElement('span');
+                    requiredMarker.innerText = '*';
+                    requiredMarker.style.color = 'red';
+                    requiredMarker.style.position = 'absolute';
+                    requiredMarker.style.top = '0';
+                    requiredMarker.style.right = '5px';
+                    elementDiv.appendChild(requiredMarker);
+                }
+                
+                elementDiv.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    
+                    // Find the element in the elements array based on this element's ID
+                    const clickedId = this.id;
+                    const clickedElement = elements.find(el => el.id === clickedId);
+                    
+                    if (!clickedElement) {
+                        console.error("Clicked element not found in elements array:", clickedId);
+                        return;
+                    }
+                    
+                    // Use the element from the elements array
+                    selectElement(clickedElement);
+                });
+                
+                // Make elements draggable
+                elementDiv.addEventListener('mousedown', startDrag);
+                
+                canvas.appendChild(elementDiv);
+            });
+            
+            // Add some styling for the selected element
+            const style = document.createElement('style');
+            style.id = 'resize-handles-style';
+            style.innerHTML = `
+                .selected-element {
+                    outline: 2px solid #007bff !important;
+                    z-index: 100;
+                }
+                
+                /* Resize handles styles */
+                .resize-handle {
+                    position: absolute;
+                    width: 8px;
+                    height: 8px;
+                    background-color: #007bff;
+                    border: 1px solid #fff;
+                    z-index: 101;
+                }
+                
+                .resize-n {
+                    top: -4px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    cursor: ns-resize;
+                }
+                
+                .resize-e {
+                    top: 50%;
+                    right: -4px;
+                    transform: translateY(-50%);
+                    cursor: ew-resize;
+                }
+                
+                .resize-s {
+                    bottom: -4px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    cursor: ns-resize;
+                }
+                
+                .resize-w {
+                    top: 50%;
+                    left: -4px;
+                    transform: translateY(-50%);
+                    cursor: ew-resize;
+                }
+                
+                .resize-ne {
+                    top: -4px;
+                    right: -4px;
+                    cursor: nesw-resize;
+                }
+                
+                .resize-se {
+                    bottom: -4px;
+                    right: -4px;
+                    cursor: nwse-resize;
+                }
+                
+                .resize-sw {
+                    bottom: -4px;
+                    left: -4px;
+                    cursor: nesw-resize;
+                }
+                
+                .resize-nw {
+                    top: -4px;
+                    left: -4px;
+                    cursor: nwse-resize;
+                }
+                
+                /* Hide resize handles by default and show them for selected elements */
+                .element-item .resize-handle {
+                    display: none;
+                }
+                
+                .selected-element .resize-handle {
+                    display: block;
+                }
+            `;
+            if (!document.getElementById('resize-handles-style')) {
+                document.head.appendChild(style);
+            }
+        }
+        
+        // Select an element to edit
+        function selectElement(element) {
+            // Find the element in the elements array to ensure we have the most up-to-date data
+            let elementData = elements.find(el => el.id === element.id);
+            
+            if (!elementData) {
+                console.error("Element not found in elements array:", element.id);
+                elementData = element; // Fallback to the passed element if not found
+            }
+            
+            // Use the element from the array for all operations
+            currentElement = elementData;
+            
+            // Clear any previous selection
+            document.querySelectorAll('.element-item').forEach(el => {
+                el.classList.remove('selected-element');
+            });
+            
+            // Highlight the selected element
+            document.getElementById(elementData.id).classList.add('selected-element');
+            
+            // Show and populate the properties form
+            const propertiesForm = document.getElementById('propertiesForm');
+            propertiesForm.style.display = 'block';
+            
+            // Show/hide image specific fields
+            const imageUrlContainer = document.getElementById('imageUrlContainer');
+            const productInfoContainer = document.getElementById('productInfoContainer');
+            
+            if (elementData.type === 'Image') {
+                imageUrlContainer.style.display = 'block';
+                productInfoContainer.style.display = 'block';
+                document.getElementById('imageUrl').value = elementData.imageUrl || '';
+                document.getElementById('lockAspectRatio').checked = elementData.lockAspectRatio || false;
+                
+                // Ensure this image is marked as a product
+                elementData.isProduct = true;
+                
+                // Populate product details form with the latest data
+                document.getElementById('productName').value = elementData.productName || '';
+                document.getElementById('productDescription').value = elementData.productDescription || '';
+                document.getElementById('productPrice').value = parseFloat(elementData.productPrice) || 0;
+                document.getElementById('productAvailable').checked = elementData.isAvailable !== false; // Default to true if not specified
+                
+                // Log availability state
+                console.log(`Product availability state: ${elementData.isAvailable}`);
+                
+                // Make sure the product details form is visible
+                document.getElementById('productDetailsForm').style.display = 'block';
+                
+                // Initialize ingredients if they don't exist
+                if (!elementData.ingredients) {
+                    elementData.ingredients = [];
+                }
+                
+                // Initialize product info UI (ingredients table, etc.)
+                initProductInfo();
+                
+                // Log the product properties for debugging
+                console.log('Image product properties:', {
+                    id: elementData.id,
+                    productName: elementData.productName,
+                    productDescription: elementData.productDescription,
+                    productPrice: elementData.productPrice,
+                    // Removed stock quantity reference
+                    ingredients: elementData.ingredients ? elementData.ingredients.length : 0
+                });
+            } else {
+                imageUrlContainer.style.display = 'none';
+                productInfoContainer.style.display = 'none';
+            }
+            
+            document.getElementById('elementText').value = element.text || '';
+            document.getElementById('elementColor').value = element.color || '#000000';
+            document.getElementById('elementWidth').value = element.width;
+            document.getElementById('elementHeight').value = element.height;
+            document.getElementById('elementStyles').value = element.additionalStyles || '';
+            
+            // Show/hide delete button
+            const deleteButton = document.getElementById('deleteElement');
+            if (element.id === 'logout-button') {
+                deleteButton.style.display = 'none';
+            } else {
+                deleteButton.style.display = 'inline-block';
+            }
+        }
+        
+        // Apply the properties to the selected element
+        document.getElementById('applyProperties').addEventListener('click', function() {
+            if (!currentElement) return;
+            
+            currentElement.text = document.getElementById('elementText').value;
+            currentElement.color = document.getElementById('elementColor').value;
+            
+            // Get width and height values from the form
+            let newWidth = parseInt(document.getElementById('elementWidth').value);
+            let newHeight = parseInt(document.getElementById('elementHeight').value);
+            
+            // Snap values to grid if enabled
+            if (snapToGrid) {
+                newWidth = snapToGridValue(newWidth);
+                newHeight = snapToGridValue(newHeight);
+                
+                // Update form values to reflect snapped values
+                document.getElementById('elementWidth').value = newWidth;
+                document.getElementById('elementHeight').value = newHeight;
+            }
+            
+            // Apply the snapped values
+            currentElement.width = newWidth;
+            currentElement.height = newHeight;
+            currentElement.additionalStyles = document.getElementById('elementStyles').value;
+            
+            // Handle image specific properties
+            if (currentElement.type === 'Image') {
+                currentElement.imageUrl = document.getElementById('imageUrl').value;
+                currentElement.lockAspectRatio = document.getElementById('lockAspectRatio').checked;
+                
+                // All images are products - set isProduct flag and save product details
+                currentElement.isProduct = true;
+                currentElement.productName = document.getElementById('productName').value || '';
+                currentElement.productDescription = document.getElementById('productDescription').value || '';
+                currentElement.productPrice = parseFloat(document.getElementById('productPrice').value) || 0;
+                // Removed product stock quantity
+                currentElement.isAvailable = document.getElementById('productAvailable').checked;
+                
+                // Log the updated availability for debugging
+                console.log(`Setting product availability for ${currentElement.productName} to: ${currentElement.isAvailable}`);
+                
+                // Ensure ingredients list exists
+                if (!currentElement.ingredients) {
+                    currentElement.ingredients = [];
+                }
+                
+                // Ensure the product details form is visible
+                document.getElementById('productDetailsForm').style.display = 'block';
+            } else {
+                // Clear ingredients if this is no longer a product
+                currentElement.ingredients = [];
+            }
+            
+            // Re-render the elements
+            renderElements();
+            
+            // Re-select the current element
+            document.getElementById(currentElement.id).classList.add('selected-element');
+            
+            // Show confirmation toast
+            showToast('Properties applied successfully', 'success');
+        });
+        
+        // Delete element
+        document.getElementById('deleteElement').addEventListener('click', function() {
+            if (!currentElement || currentElement.id === 'logout-button') return;
+            
+            if (confirm('Are you sure you want to delete this element?')) {
+                // Remove the element from the array
+                elements = elements.filter(el => el.id !== currentElement.id);
+                
+                // Re-render the elements
+                renderElements();
+                
+                // Hide the properties form
+                document.getElementById('propertiesForm').style.display = 'none';
+                currentElement = null;
+            }
+        });
+        
+        // Reset to default elements
+        document.getElementById('resetElements').addEventListener('click', function() {
+            const currentPage = '@Model.CurrentPage';
+            let confirmMessage = 'Are you sure you want to reset to the default template?';
+            
+            if (currentPage === 'Register') {
+                confirmMessage = 'Are you sure you want to reset all element positions to default?';
+            }
+            
+            if (confirm(confirmMessage)) {
+                // Reset to appropriate default elements based on page type
+                elements = [...defaultElements[currentPage]];
+                renderElements();
+                
+                // If it's the login page, it should have Email, Password, Login button and Signup link
+                if (currentPage === 'Login') {
+                    // Default elements are already defined in the defaultElements object
+                }
+                // For Register page, it should have all the required signup fields and submit button
+                else if (currentPage === 'Register') {
+                    // Default elements are already defined in the defaultElements object
+                }
+                // For Dashboard, it should restore default dashboard elements
+                else if (currentPage === 'Dashboard') {
+                    // Default elements are already defined in the defaultElements object
+                }
+                // For EmployeeDashboard, it should restore default employee dashboard elements
+                else if (currentPage === 'EmployeeDashboard') {
+                    // Default elements are already defined in the defaultElements object
+                }
+                // For ManagerDashboard, it should restore default manager dashboard elements
+                else if (currentPage === 'ManagerDashboard') {
+                    // Default elements are already defined in the defaultElements object
+                }
+                // For AssistantManagerDashboard, it should restore default assistant manager dashboard elements
+                else if (currentPage === 'AssistantManagerDashboard') {
+                    // Default elements are already defined in the defaultElements object
+                }
+                // For InventoryClerkDashboard, it should restore default inventory clerk dashboard elements
+                else if (currentPage === 'InventoryClerkDashboard') {
+                    // Default elements are already defined in the defaultElements object
+                }
+                
+                // Also reset the background color
+                document.getElementById('canvasBackgroundColor').value = '#ffffff';
+                document.getElementById('designCanvas').style.backgroundColor = '#ffffff';
+            }
+        });
+        
+        // Add element buttons
+        document.getElementById('addLabelBtn')?.addEventListener('click', function() {
+            addNewElement('Label', 'New Label');
+        });
+        
+        document.getElementById('addButtonBtn')?.addEventListener('click', function() {
+            addNewElement('Button', 'New Button');
+        });
+        
+        document.getElementById('addContentPanelBtn')?.addEventListener('click', function() {
+            addNewElement('ContentPanel', 'New Content Panel');
+        });
+        
+        document.getElementById('addImageBtn')?.addEventListener('click', function() {
+            // Check if we're on the Dashboard page to add product instead of just an image
+            if ('@Model.CurrentPage' === 'Dashboard') {
+                addNewProduct();
+            } else {
+                addNewElement('Image', '');
+            }
+        });
+        
+        // Add a new product element to the canvas
+        function addNewProduct() {
+            const newId = generateUniqueId('product');
+            
+            // Default positions 
+            let posX = 100;
+            let posY = 100;
+            
+            // Snap to grid if enabled
+            if (snapToGrid) {
+                posX = snapToGridValue(posX);
+                posY = snapToGridValue(posY);
+            }
+            
+            // Default size for product
+            let width = 200;
+            let height = 200;
+            
+            // Snap sizes to grid if enabled
+            if (snapToGrid) {
+                width = snapToGridValue(width);
+                height = snapToGridValue(height);
+            }
+            
+            const newElement = {
+                id: newId,
+                type: 'Image',
+                text: 'Product',
+                x: posX,
+                y: posY,
+                width: width,
+                height: height,
+                color: '#000000',
+                imageUrl: 'https://via.placeholder.com/200x200?text=Product',
+                imageDescription: 'Product Description',
+                isProduct: true,
+                productName: 'New Product',
+                productDescription: 'Product Description',
+                productPrice: 0.00,
+                isAvailable: true // Set default availability
+            };
+            
+            elements.push(newElement);
+            renderElements();
+            
+            // Select the new element
+            selectElement(newElement);
+        }
+        
+        // Add a new element to the canvas
+        function addNewElement(type, text) {
+            const newId = generateUniqueId(type.toLowerCase());
+            
+            // Default positions 
+            let posX = 100;
+            let posY = 100;
+            
+            // Snap to grid if enabled
+            if (snapToGrid) {
+                posX = snapToGridValue(posX);
+                posY = snapToGridValue(posY);
+            }
+            
+            // Default sizes based on type
+            let width = type === 'ContentPanel' ? 300 : 200;
+            let height = type === 'ContentPanel' ? 200 : 40;
+            
+            // Snap sizes to grid if enabled
+            if (snapToGrid) {
+                width = snapToGridValue(width);
+                height = snapToGridValue(height);
+            }
+            
+            const newElement = {
+                id: newId,
+                type: type,
+                text: text,
+                x: posX,
+                y: posY,
+                width: width,
+                height: height,
+                color: type === 'Button' ? '#007bff' : '#000000'
+            };
+            
+            // Add image specific properties
+            if (type === 'Image') {
+                newElement.imageUrl = 'https://via.placeholder.com/200x150';
+                newElement.lockAspectRatio = true;
+                
+                // Mark as product and initialize product properties
+                newElement.isProduct = true;
+                newElement.productName = 'New Product';
+                newElement.productDescription = 'Product description';
+                newElement.productPrice = 0.00;
+                newElement.isAvailable = true; // Set default availability
+                newElement.ingredients = [];
+            }
+            
+            elements.push(newElement);
+            renderElements();
+            
+            // Select the new element
+            selectElement(newElement);
+        }
+        
+        // Generate a unique ID for new elements
+        function generateUniqueId(prefix) {
+            const timestamp = new Date().getTime();
+            return `${prefix}-${timestamp}`;
+        }
+        
+        // Save the template
+        document.getElementById('saveTemplate').addEventListener('click', function() {
+            // Create the payload to send to the API
+            const payload = {
+                pageName: '@Model.CurrentPage',
+                backgroundColor: document.getElementById('canvasBackgroundColor').value,
+                elements: elements.map(elem => {
+                    // Create a copy of the element to avoid reference issues
+                    const elementData = {...elem};
+                    
+                    // Ensure position and size values are integers
+                    elementData.x = Math.round(Number(elementData.x));
+                    elementData.y = Math.round(Number(elementData.y));
+                    elementData.width = Math.round(Number(elementData.width));
+                    elementData.height = Math.round(Number(elementData.height));
+                    
+                    // If it has multiple images, make sure they're included
+                    if (elem.images) {
+                        elementData.images = elem.images.map(img => ({
+                            base64Data: img.base64Data,
+                            description: img.description
+                        }));
+                    }
+                    
+                    // Include product-related properties
+                    if (elem.isProduct) {
+                        elementData.isProduct = elem.isProduct;
+                        elementData.productName = elem.productName || '';
+                        elementData.productDescription = elem.productDescription || '';
+                        elementData.productPrice = parseFloat(elem.productPrice) || 0;
+                        elementData.isAvailable = elem.isAvailable;
+                        
+                        // Include product ingredients if any
+                        if (elem.ingredients && elem.ingredients.length > 0) {
+                            elementData.ingredients = elem.ingredients.map(ingredient => ({
+                                ingredientName: ingredient.ingredientName,
+                                quantity: parseFloat(ingredient.quantity) || 0,
+                                unit: ingredient.unit || 'g',
+                                notes: ingredient.notes || ''
+                            }));
+                        }
+                    }
+                    
+                    return elementData;
+                })
+            };
+            
+            // For Register page, ensure all required fields are present
+            if (payload.pageName === 'Register') {
+                const requiredFieldIds = defaultElements.Register.map(e => e.id);
+                const missingFields = requiredFieldIds.filter(id => !payload.elements.some(e => e.id === id));
+                
+                if (missingFields.length > 0) {
+                    alert('Error: Required signup fields cannot be removed. Please reset the template.');
+                    return;
+                }
+            }
+            
+            // For EmployeeDashboard page, ensure logout button is present
+            if (payload.pageName === 'EmployeeDashboard' && !payload.elements.some(e => e.id === 'logout-button')) {
+                alert('Error: The logout button is required and cannot be removed.');
+                return;
+            }
+            
+            // Show saving indicator
+            const saveBtn = document.getElementById('saveTemplate');
+            const originalText = saveBtn.textContent;
+            saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Saving...';
+            saveBtn.disabled = true;
+            
+            // Send data to the server
+            fetch('/api/templates/save', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(document.querySelector('input[name="__RequestVerificationToken"]') ? {
+                        'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+                    } : {})
+                },
+                body: JSON.stringify(payload)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    showToast('Template saved successfully!', 'success');
+                } else {
+                    showToast('Error saving template: ' + data.message, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Save error:', error);
+                showToast('Error saving template: ' + error, 'error');
+            })
+            .finally(() => {
+                // Restore button state
+                saveBtn.innerHTML = originalText;
+                saveBtn.disabled = false;
+            });
+        });
+        
+        // Preview the template
+        document.getElementById('previewTemplate').addEventListener('click', function() {
+            const currentPage = '@Model.CurrentPage';
+            
+            // Create options for preview
+            const previewType = confirm(`You may get "Access Denied" when previewing ${currentPage}.\n\nClick OK for safe visual preview.\nClick Cancel for actual page (requires login).`);
+            
+            if (previewType) {
+                // Safe preview - create a new window with visual preview
+                const newWindow = window.open('', '_blank');
+                
+                // Write basic HTML structure
+                newWindow.document.write(`
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <title>${currentPage} Preview (Visual Only)</title>
+                        <meta charset="utf-8">
+                        <meta name="viewport" content="width=device-width, initial-scale=1">
+                        <style>
+                            body { font-family: Arial, sans-serif; padding: 20px; }
+                            .warning { background-color: #fff3cd; padding: 10px; border-radius: 5px; margin-bottom: 20px; }
+                            .element { position: absolute; border: 1px solid #ddd; overflow: hidden; }
+                            .btn { background-color: #0d6efd; color: white; border-radius: 4px; display: flex; align-items: center; justify-content: center; }
+                            .img { background-size: cover; background-position: center; }
+                            .label { display: flex; align-items: center; }
+                            .panel { background-color: #f8f9fa; padding: 10px; border-radius: 4px; }
+                            .canvas { position: relative; border: 1px solid #ddd; height: 600px; margin-top: 20px; }
+                        </style>
+                    </head>
+                    <body>
+                        <h2>${currentPage} - Visual Preview Only</h2>
+                        <div class="warning">
+                            <strong>Note:</strong> This is a visual preview only. Interactive features won't work.
+                        </div>
+                        <div class="canvas" style="background-color: ${document.getElementById('canvasBackgroundColor').value}">
+                        </div>
+                    </body>
+                    </html>
+                `);
+                
+                // Add all elements to the canvas
+                const canvas = newWindow.document.querySelector('.canvas');
+                
+                elements.forEach(element => {
+                    const div = newWindow.document.createElement('div');
+                    div.className = `element ${element.type.toLowerCase()}`;
+                    div.style.left = element.x + 'px';
+                    div.style.top = element.y + 'px';
+                    div.style.width = element.width + 'px';
+                    div.style.height = element.height + 'px';
+                    
+                    // Style based on element type
+                    if (element.type === 'Button') {
+                        div.className += ' btn';
+                        div.style.backgroundColor = element.color;
+                        div.textContent = element.text;
+                    } else if (element.type === 'Label') {
+                        div.className += ' label';
+                        div.style.color = element.color;
+                        div.textContent = element.text;
+                    } else if (element.type === 'ContentPanel') {
+                        div.className += ' panel';
+                        div.textContent = element.text;
+                    } else if (element.type === 'Image') {
+                        div.className += ' img';
+                        if (element.imageUrl) {
+                            div.style.backgroundImage = `url('${element.imageUrl}')`;
+                        }
+                        // Add product info if available
+                        if (element.isProduct && element.productName) {
+                            const badge = newWindow.document.createElement('div');
+                            badge.style.position = 'absolute';
+                            badge.style.bottom = '0';
+                            badge.style.left = '0';
+                            badge.style.right = '0';
+                            badge.style.backgroundColor = 'rgba(0,0,0,0.5)';
+                            badge.style.color = 'white';
+                            badge.style.padding = '4px';
+                            badge.style.fontSize = '12px';
+                            badge.textContent = element.productName;
+                            div.appendChild(badge);
+                        }
+                    }
+                    
+                    canvas.appendChild(div);
+                });
+                
+                newWindow.document.close();
+            } else {
+                // Actual page preview - may show Access Denied
+                let previewUrl;
+                
+                // Map the page type to the appropriate URL
+                switch(currentPage) {
+                    case 'Dashboard':
+                        previewUrl = '/User'; // User dashboard
+                        break;
+                    case 'EmployeeDashboard':
+                        previewUrl = '/Employee'; // Cashier dashboard
+                        break;
+                    case 'ManagerDashboard':
+                        previewUrl = '/Manager'; // Manager dashboard
+                        break;
+                    case 'AssistantManagerDashboard':
+                        previewUrl = '/AssistantManager'; // Assistant Manager dashboard
+                        break;
+                    case 'InventoryClerkDashboard':
+                        previewUrl = '/Employee/InventoryClerk'; // Inventory Clerk dashboard
+                        break;
+                    case 'MyOrders':
+                        previewUrl = '/MyOrders'; // My Orders page
+                        break;
+                    case 'Login':
+                        previewUrl = '/Login'; // Login page
+                        break;
+                    case 'Register':
+                        previewUrl = '/Register'; // Register page
+                        break;
+                    default:
+                        previewUrl = '/' + currentPage; // Fallback to page name
+                }
+                
+                showToast(`Opening ${currentPage}. You may need to login with appropriate role.`, 'warning', 5000);
+                window.open(previewUrl, '_blank');
+            }
+        });
+        
+        // Toggle grid background
+        document.getElementById('toggleGrid').addEventListener('click', function() {
+            const canvas = document.getElementById('designCanvas');
+            if (canvas.style.backgroundImage) {
+                canvas.style.backgroundImage = '';
+            } else {
+                canvas.style.backgroundImage = 'linear-gradient(#dee2e680 1px, transparent 1px), linear-gradient(90deg, #dee2e680 1px, transparent 1px)';
+                canvas.style.backgroundSize = `${gridSize}px ${gridSize}px`;
+            }
+        });
+        
+        // Dragging functionality
+        let draggedElement = null;
+        let offsetX, offsetY;
+        let resizingElement = null;
+        let resizeDirection = '';
+        let originalWidth, originalHeight, originalX, originalY;
+        let startX, startY;
+        
+        function startDrag(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            draggedElement = this;
+            
+            // Store the original element position
+            const elementId = draggedElement.id;
+            const element = elements.find(el => el.id === elementId);
+            
+            // Calculate the offset within the dragged element, accounting for zoom
+            const rect = draggedElement.getBoundingClientRect();
+            offsetX = (e.clientX - rect.left) / currentZoomLevel;
+            offsetY = (e.clientY - rect.top) / currentZoomLevel;
+            
+            // Add event listeners for drag move and end
+            document.addEventListener('mousemove', drag);
+            document.addEventListener('mouseup', endDrag);
+        }
+        
+        function drag(e) {
+            if (!draggedElement) return;
+            
+            // Calculate the new position
+            const canvas = document.getElementById('designCanvas');
+            const canvasRect = canvas.getBoundingClientRect();
+            
+            // Get the current element
+            const elementId = draggedElement.id;
+            const element = elements.find(el => el.id === elementId);
+            
+            // Calculate position relative to the canvas, accounting for zoom
+            let newX = (e.clientX - canvasRect.left) / currentZoomLevel - offsetX;
+            let newY = (e.clientY - canvasRect.top) / currentZoomLevel - offsetY;
+            
+            // Snap to grid if enabled
+            if (snapToGrid) {
+                newX = snapToGridValue(newX);
+                newY = snapToGridValue(newY);
+            }
+            
+            // Ensure the element stays within the canvas
+            const canvasWidth = canvas.offsetWidth / currentZoomLevel;
+            const canvasHeight = canvas.offsetHeight / currentZoomLevel;
+            newX = Math.max(0, Math.min(newX, canvasWidth - parseInt(element.width)));
+            newY = Math.max(0, Math.min(newY, canvasHeight - parseInt(element.height)));
+            
+            // Update the element's position
+            draggedElement.style.left = newX + 'px';
+            draggedElement.style.top = newY + 'px';
+            
+            // Update the element data
+            if (element) {
+                element.x = Math.round(newX); // Ensure x is an integer
+                element.y = Math.round(newY); // Ensure y is an integer
+            }
+        }
+        
+        function endDrag() {
+            draggedElement = null;
+            document.removeEventListener('mousemove', drag);
+            document.removeEventListener('mouseup', endDrag);
+        }
+        
+        // Resize functionality
+        function startResize(e, direction) {
+            e.stopPropagation();
+            
+            resizingElement = e.target.closest('.element-item');
+            resizeDirection = direction;
+            
+            // Get the current element dimensions and position
+            const elementId = resizingElement.id;
+            const element = elements.find(el => el.id === elementId);
+            
+            // Store the original dimensions
+            originalWidth = element.width;
+            originalHeight = element.height;
+            originalX = element.x;
+            originalY = element.y;
+            
+            // Store starting mouse position
+            startX = e.clientX;
+            startY = e.clientY;
+            
+            // Show resize info for images
+            if (element.type === 'Image') {
+                const resizeInfo = resizingElement.querySelector('.image-resize-info');
+                if (resizeInfo) {
+                    resizeInfo.style.display = 'block';
+                    resizeInfo.innerHTML = `${Math.round(element.width)}×${Math.round(element.height)}`;
+                }
+            }
+            
+            // Add cursor class to the body
+            document.body.classList.add('resizing');
+            document.body.classList.add(`resize-${direction}`);
+            
+            // Add event listeners for resize
+            document.addEventListener('mousemove', resize);
+            document.addEventListener('mouseup', endResize);
+        }
+        
+        function resize(e) {
+            if (!resizingElement || !resizeDirection) return;
+            
+            // Get the element
+            const elementId = resizingElement.id;
+            const element = elements.find(el => el.id === elementId);
+            if (!element) return;
+            
+            // Calculate movement adjusted for zoom
+            const deltaX = (e.clientX - startX) / currentZoomLevel;
+            const deltaY = (e.clientY - startY) / currentZoomLevel;
+            
+            // Calculate new dimensions and position based on resize direction
+            let newWidth = originalWidth;
+            let newHeight = originalHeight;
+            let newX = originalX;
+            let newY = originalY;
+            
+            // Check if aspect ratio should be preserved
+            // Either shift key is pressed or aspect ratio lock is enabled
+            const preserveAspectRatio = (e.shiftKey || element.lockAspectRatio) && 
+                                        element.type === 'Image' && 
+                                        element.aspectRatio;
+            
+            if (resizeDirection.includes('e')) {
+                newWidth = Math.max(50, originalWidth + deltaX);
+                if (preserveAspectRatio && element.aspectRatio) {
+                    newHeight = newWidth / element.aspectRatio;
+                }
+                if (snapToGrid) {
+                    newWidth = snapToGridValue(newWidth);
+                    if (preserveAspectRatio && element.aspectRatio) {
+                        newHeight = snapToGridValue(newHeight);
+                    }
+                }
+            }
+            if (resizeDirection.includes('w')) {
+                const maxDeltaX = originalWidth - 50; // Minimum width constraint
+                const effectiveDeltaX = Math.max(-maxDeltaX, deltaX);
+                newWidth = originalWidth - effectiveDeltaX;
+                newX = originalX + effectiveDeltaX;
+                
+                if (preserveAspectRatio && element.aspectRatio) {
+                    newHeight = newWidth / element.aspectRatio;
+                    // Adjust Y position to keep the center point stable
+                    newY = originalY + (originalHeight - newHeight) / 2;
+                }
+                
+                if (snapToGrid) {
+                    newWidth = snapToGridValue(newWidth);
+                    newX = snapToGridValue(newX);
+                    if (preserveAspectRatio && element.aspectRatio) {
+                        newHeight = snapToGridValue(newHeight);
+                        newY = snapToGridValue(newY);
+                    }
+                }
+            }
+            if (resizeDirection.includes('s')) {
+                newHeight = Math.max(20, originalHeight + deltaY);
+                if (preserveAspectRatio && element.aspectRatio) {
+                    newWidth = newHeight * element.aspectRatio;
+                }
+                if (snapToGrid) {
+                    newHeight = snapToGridValue(newHeight);
+                    if (preserveAspectRatio && element.aspectRatio) {
+                        newWidth = snapToGridValue(newWidth);
+                    }
+                }
+            }
+            if (resizeDirection.includes('n')) {
+                const maxDeltaY = originalHeight - 20; // Minimum height constraint
+                const effectiveDeltaY = Math.max(-maxDeltaY, deltaY);
+                newHeight = originalHeight - effectiveDeltaY;
+                newY = originalY + effectiveDeltaY;
+                
+                if (preserveAspectRatio && element.aspectRatio) {
+                    newWidth = newHeight * element.aspectRatio;
+                    // Adjust X position to keep the center point stable
+                    newX = originalX + (originalWidth - newWidth) / 2;
+                }
+                
+                if (snapToGrid) {
+                    newHeight = snapToGridValue(newHeight);
+                    newY = snapToGridValue(newY);
+                    if (preserveAspectRatio && element.aspectRatio) {
+                        newWidth = snapToGridValue(newWidth);
+                        newX = snapToGridValue(newX);
+                    }
+                }
+            }
+            
+            // Update the element data
+            element.width = Math.round(newWidth);
+            element.height = Math.round(newHeight);
+            element.x = Math.round(newX);
+            element.y = Math.round(newY);
+            
+            // Update the element display
+            resizingElement.style.width = newWidth + 'px';
+            resizingElement.style.height = newHeight + 'px';
+            resizingElement.style.left = newX + 'px';
+            resizingElement.style.top = newY + 'px';
+            
+            // Update resize info for images
+            if (element.type === 'Image') {
+                const resizeInfo = resizingElement.querySelector('.image-resize-info');
+                if (resizeInfo) {
+                    resizeInfo.innerHTML = `${Math.round(newWidth)}×${Math.round(newHeight)}`;
+                    resizeInfo.style.display = 'block';
+                }
+            }
+        }
+        
+        function endResize() {
+            if (!resizingElement || !resizeDirection) return;
+            
+            // Hide resize info for images
+            if (resizingElement) {
+                const resizeInfo = resizingElement.querySelector('.image-resize-info');
+                if (resizeInfo) {
+                    resizeInfo.style.display = 'none';
+                }
+            }
+            
+            // Remove resize cursor classes
+            document.body.classList.remove('resizing');
+            document.body.classList.remove(`resize-${resizeDirection}`);
+            
+            // Clear variables
+            resizingElement = null;
+            resizeDirection = null;
+            originalWidth = null;
+            originalHeight = null;
+            originalX = null;
+            originalY = null;
+            
+            // Remove event listeners
+            document.removeEventListener('mousemove', resize);
+            document.removeEventListener('mouseup', endResize);
+        }
+        
+        // Image upload functionality
+        document.getElementById('uploadImageBtn')?.addEventListener('click', function() {
+            const fileInput = document.getElementById('imageUpload');
+            
+            if (fileInput.files && fileInput.files[0]) {
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    // Store the Base64 encoded image
+                    const base64Image = e.target.result;
+                    document.getElementById('imageUrl').value = base64Image;
+                    
+                    // Show preview
+                    document.getElementById('previewImage').src = base64Image;
+                    document.getElementById('uploadPreview').style.display = 'block';
+                    
+                    // If this element is currently selected, update it
+                    if (currentElement && currentElement.type === 'Image') {
+                        currentElement.imageUrl = base64Image;
+                        renderElements();
+                    }
+                };
+                
+                reader.readAsDataURL(fileInput.files[0]);
+            }
+        });
+        
+        // Show image preview when file selected
+        document.getElementById('imageUpload')?.addEventListener('change', function() {
+            if (this.files && this.files[0]) {
+                document.getElementById('uploadPreview').style.display = 'none';
+            }
+        });
+        
+        // Update UI based on page type
+        function updatePageSpecificUI(pageName) {
+            const resetButton = document.getElementById('resetElements');
+            const addElementSection = document.getElementById('addElementSection');
+            const warningMessage = document.getElementById('registerPageWarning');
+            const employeeDashboardWarning = document.getElementById('employeeDashboardWarning');
+            
+            if (pageName === 'Register') {
+                // For Register page, show warning and hide add/remove functionality
+                resetButton.textContent = 'Reset to Default';
+                if (warningMessage) warningMessage.style.display = 'block';
+                if (employeeDashboardWarning) employeeDashboardWarning.style.display = 'none';
+                if (addElementSection) addElementSection.style.display = 'none';
+            } else if (pageName === 'Dashboard') {
+                // For Dashboard page, show add functionality
+                resetButton.textContent = 'Reset to Default';
+                if (warningMessage) warningMessage.style.display = 'none';
+                if (employeeDashboardWarning) employeeDashboardWarning.style.display = 'none';
+                if (addElementSection) addElementSection.style.display = 'block';
+            } else if (pageName === 'EmployeeDashboard') {
+                // For EmployeeDashboard page, show warning
+                resetButton.textContent = 'Reset to Default';
+                if (warningMessage) warningMessage.style.display = 'none';
+                if (employeeDashboardWarning) employeeDashboardWarning.style.display = 'block';
+                if (addElementSection) addElementSection.style.display = 'block';
+            } else if (pageName === 'ManagerDashboard' || pageName === 'AssistantManagerDashboard' || pageName === 'InventoryClerkDashboard') {
+                // For Manager, Assistant Manager, and Inventory Clerk dashboards
+                resetButton.textContent = 'Reset to Default';
+                if (warningMessage) warningMessage.style.display = 'none';
+                if (employeeDashboardWarning) employeeDashboardWarning.style.display = 'none';
+                if (addElementSection) addElementSection.style.display = 'block';
+            } else {
+                // For other pages
+                resetButton.textContent = 'Reset to Default';
+                if (warningMessage) warningMessage.style.display = 'none';
+                if (employeeDashboardWarning) employeeDashboardWarning.style.display = 'none';
+                if (addElementSection) addElementSection.style.display = 'none';
+            }
+        }
+        
+        // Initialize the page
+        document.addEventListener('DOMContentLoaded', function() {
+            loadPageElements('@Model.CurrentPage');
+            
+            // Add keyboard shortcuts for aspect ratio toggle
+            document.addEventListener('keydown', function(e) {
+                // If we're currently resizing an image and the key is 'A'
+                if (resizingElement && e.key.toLowerCase() === 'a') {
+                    const elementId = resizingElement.id;
+                    const element = elements.find(el => el.id === elementId);
+                    if (element && element.type === 'Image') {
+                        // Toggle aspect ratio lock
+                        element.lockAspectRatio = !element.lockAspectRatio;
+                        
+                        // Show notification
+                        const message = element.lockAspectRatio ? 
+                            'Aspect ratio locked (A to unlock)' : 
+                            'Aspect ratio unlocked (A to lock)';
+                        
+                        // Update resize info
+                        const resizeInfo = resizingElement.querySelector('.image-resize-info');
+                        if (resizeInfo) {
+                            resizeInfo.innerHTML = `${Math.round(element.width)}×${Math.round(element.height)} ${element.lockAspectRatio ? '🔒' : ''}`;
+                        }
+                        
+                        // Show a mini toast near the image
+                        showMiniToast(resizingElement, message);
+                    }
+                }
+            });
+            
+            // Handle image upload
+            document.getElementById('uploadImageBtn').addEventListener('click', function() {
+                const fileInput = document.getElementById('imageUpload');
+                if (fileInput.files.length > 0) {
+                    const file = fileInput.files[0];
+                    const reader = new FileReader();
+                    
+                    reader.onload = function(e) {
+                        const base64Image = e.target.result;
+                        if (currentElement) {
+                            currentElement.imageUrl = base64Image;
+                            document.getElementById('imageUrl').value = base64Image;
+                            
+                            const previewContainer = document.getElementById('uploadPreview');
+                            const previewImage = document.getElementById('previewImage');
+                            previewImage.src = base64Image;
+                            previewContainer.style.display = 'block';
+                        }
+                    };
+                    
+                    reader.readAsDataURL(file);
+                }
+            });
+            
+            // Handle multiple images upload
+            document.getElementById('uploadMultipleImagesBtn').addEventListener('click', function() {
+                const fileInput = document.getElementById('multipleImagesUpload');
+                if (fileInput.files.length > 0) {
+                    const formData = new FormData();
+                    
+                    for (let i = 0; i < fileInput.files.length; i++) {
+                        formData.append('files', fileInput.files[i]);
+                    }
+                    
+                    fetch('/api/image/upload', {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (currentElement) {
+                            // Initialize images array if it doesn't exist
+                            if (!currentElement.images) {
+                                currentElement.images = [];
+                            }
+                            
+                            // Clear the preview container
+                            const previewContainer = document.getElementById('multipleImagesPreview');
+                            previewContainer.innerHTML = '';
+                            
+                            // Add each image to the element and create preview
+                            data.forEach((img, index) => {
+                                const imgObj = {
+                                    base64Data: img.base64Data,
+                                    description: ''
+                                };
+                                
+                                // Add image to the currentElement
+                                currentElement.images.push(imgObj);
+                                
+                                // Create preview
+                                const imgContainer = createImagePreviewItem(img.base64Data, '', currentElement.images.length - 1);
+                                previewContainer.appendChild(imgContainer);
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error uploading images:', error);
+                        alert('Failed to upload images. Please try again.');
+                    });
+                }
+            });
+            
+            // Apply properties to element
+            document.getElementById('applyProperties').addEventListener('click', function() {
+                if (currentElement) {
+                    currentElement.text = document.getElementById('elementText').value;
+                    currentElement.color = document.getElementById('elementColor').value;
+                    currentElement.width = parseInt(document.getElementById('elementWidth').value);
+                    currentElement.height = parseInt(document.getElementById('elementHeight').value);
+                    currentElement.additionalStyles = document.getElementById('elementStyles').value;
+                    
+                    // Image properties
+                    if (currentElement.type === 'Image') {
+                        currentElement.imageUrl = document.getElementById('imageUrl').value;
+                        currentElement.lockAspectRatio = document.getElementById('lockAspectRatio').checked;
+                        currentElement.isProduct = true;
+                        
+                        // Save product details
+                        if (currentElement.isProduct) {
+                            currentElement.productName = document.getElementById('productName').value;
+                            currentElement.productDescription = document.getElementById('productDescription').value;
+                            currentElement.productPrice = parseFloat(document.getElementById('productPrice').value) || 0;
+                            currentElement.isAvailable = document.getElementById('productAvailable').checked;
+                        }
+                    }
+                    
+                    // Update the element on screen
+                    updateElementDisplay(currentElement);
+                }
+            });
+
+            // Handle product checkbox toggle
+            document.getElementById('isProductCheckbox').addEventListener('change', function() {
+                const productDetailsForm = document.getElementById('productDetailsForm');
+                productDetailsForm.style.display = this.checked ? 'block' : 'none';
+            });
+        });
+        
+        // Create a preview item for an uploaded image with a description field
+        function createImagePreviewItem(base64Data, description, index) {
+            const col = document.createElement('div');
+            col.className = 'col-md-6 mb-2';
+            
+            const card = document.createElement('div');
+            card.className = 'card';
+            
+            const img = document.createElement('img');
+            img.src = base64Data;
+            img.className = 'card-img-top';
+            img.style.height = '100px';
+            img.style.objectFit = 'cover';
+            
+            const cardBody = document.createElement('div');
+            cardBody.className = 'card-body p-2';
+            
+            const descriptionInput = document.createElement('textarea');
+            descriptionInput.className = 'form-control form-control-sm';
+            descriptionInput.placeholder = 'Image description';
+            descriptionInput.value = description || '';
+            descriptionInput.rows = 2;
+            descriptionInput.setAttribute('data-index', index);
+            
+            // Update the description in the element's images array when changed
+            descriptionInput.addEventListener('input', function() {
+                const index = parseInt(this.getAttribute('data-index'));
+                if (currentElement && currentElement.images && currentElement.images[index]) {
+                    currentElement.images[index].description = this.value;
+                }
+            });
+            
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'btn btn-sm btn-danger w-100 mt-1';
+            deleteBtn.textContent = 'Remove';
+            deleteBtn.setAttribute('data-index', index);
+            
+            // Remove image when delete button is clicked
+            deleteBtn.addEventListener('click', function() {
+                const index = parseInt(this.getAttribute('data-index'));
+                if (currentElement && currentElement.images) {
+                    // Remove the image from the array
+                    currentElement.images.splice(index, 1);
+                    
+                    // Refresh the preview
+                    const previewContainer = document.getElementById('multipleImagesPreview');
+                    previewContainer.innerHTML = '';
+                    
+                    currentElement.images.forEach((img, idx) => {
+                        const imgContainer = createImagePreviewItem(img.base64Data, img.description, idx);
+                        previewContainer.appendChild(imgContainer);
+                    });
+                }
+            });
+            
+            cardBody.appendChild(descriptionInput);
+            cardBody.appendChild(deleteBtn);
+            
+            card.appendChild(img);
+            card.appendChild(cardBody);
+            
+            col.appendChild(card);
+            
+            return col;
+        }
+
+        // Function to show the element properties form based on element type
+        function showElementProperties(element) {
+            currentElement = element;
+            document.getElementById('propertiesForm').style.display = 'block';
+            document.getElementById('elementText').value = element.text || '';
+            document.getElementById('elementColor').value = element.color || '#000000';
+            document.getElementById('elementWidth').value = element.width || 200;
+            document.getElementById('elementHeight').value = element.height || 40;
+            document.getElementById('elementStyles').value = element.additionalStyles || '';
+            
+            // Hide all type-specific containers
+            document.getElementById('imageUrlContainer').style.display = 'none';
+            document.getElementById('multipleImagesContainer').style.display = 'none';
+            document.getElementById('productInfoContainer').style.display = 'none';
+            
+            // Show type-specific properties
+            if (element.type === 'Image') {
+                document.getElementById('imageUrlContainer').style.display = 'block';
+                document.getElementById('multipleImagesContainer').style.display = 'block';
+                document.getElementById('productInfoContainer').style.display = 'block';
+                document.getElementById('imageUrl').value = element.imageUrl || '';
+                document.getElementById('lockAspectRatio').checked = element.lockAspectRatio || false;
+                
+                // Set as product by default
+                element.isProduct = true;
+                
+                // Populate product fields
+                document.getElementById('productName').value = element.productName || '';
+                document.getElementById('productDescription').value = element.productDescription || '';
+                document.getElementById('productPrice').value = parseFloat(element.productPrice) || 0;
+                document.getElementById('productAvailable').checked = element.isAvailable !== false; // Default to true if not specified
+                
+                // If the element has multiple images, populate the preview
+                if (element.images && element.images.length > 0) {
+                    const previewContainer = document.getElementById('multipleImagesPreview');
+                    previewContainer.innerHTML = '';
+                    
+                    element.images.forEach((img, index) => {
+                        const imgContainer = createImagePreviewItem(img.base64Data, img.description, index);
+                        previewContainer.appendChild(imgContainer);
+                    });
+                }
+            }
+            
+            document.getElementById('deleteElement').style.display = element.required ? 'none' : 'inline-block';
+        }
+
+        function showToast(message, type = 'success') {
+            const toastContainer = document.getElementById('toast-container');
+            const toastId = 'toast-' + Date.now();
+            
+            const toast = document.createElement('div');
+            toast.className = `toast show ${type === 'success' ? 'bg-success' : 'bg-danger'} text-white`;
+            toast.id = toastId;
+            toast.setAttribute('role', 'alert');
+            toast.setAttribute('aria-live', 'assertive');
+            toast.setAttribute('aria-atomic', 'true');
+            
+            const toastBody = document.createElement('div');
+            toastBody.className = 'toast-body d-flex justify-content-between align-items-center';
+            
+            const messageSpan = document.createElement('span');
+            messageSpan.innerHTML = `<i class="bi ${type === 'success' ? 'bi-check-circle' : 'bi-exclamation-triangle'}"></i> ${message}`;
+            
+            const closeButton = document.createElement('button');
+            closeButton.type = 'button';
+            closeButton.className = 'btn-close btn-close-white ms-3';
+            closeButton.setAttribute('data-bs-dismiss', 'toast');
+            closeButton.setAttribute('aria-label', 'Close');
+            closeButton.onclick = function() {
+                document.getElementById(toastId).remove();
+            };
+            
+            toastBody.appendChild(messageSpan);
+            toastBody.appendChild(closeButton);
+            toast.appendChild(toastBody);
+            
+            toastContainer.appendChild(toast);
+            
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                const toastElement = document.getElementById(toastId);
+                if (toastElement) {
+                    toastElement.remove();
+                }
+            }, 5000);
+        }
+        
+        // Toggle snap to grid
+        document.getElementById('toggleSnap').addEventListener('click', function() {
+            snapToGrid = !snapToGrid;
+            this.textContent = `Snap to Grid: ${snapToGrid ? 'On' : 'Off'}`;
+            this.classList.toggle('btn-outline-secondary', !snapToGrid);
+            this.classList.toggle('btn-secondary', snapToGrid);
+            
+            // If turning on, snap all elements to grid
+            if (snapToGrid) {
+                // Update position and size of all elements
+                elements.forEach(element => {
+                    element.x = snapToGridValue(element.x);
+                    element.y = snapToGridValue(element.y);
+                    element.width = snapToGridValue(element.width);
+                    element.height = snapToGridValue(element.height);
+                });
+                
+                // Re-render to apply changes
+                renderElements();
+                
+                // Re-select current element if any
+                if (currentElement) {
+                    document.getElementById(currentElement.id).classList.add('selected-element');
+                }
+            }
+            
+            // Show toast notification to indicate state change
+            showToast(`Snap to grid has been turned ${snapToGrid ? 'on' : 'off'}`, 'success');
+        });
+        
+        // Function to snap value to grid
+        function snapToGridValue(value) {
+            if (!snapToGrid) return value;
+            return Math.round(value / gridSize) * gridSize;
+        }
+
+        // Show a mini toast near an element
+        function showMiniToast(element, message, duration = 2000) {
+            const toast = document.createElement('div');
+            toast.className = 'mini-toast';
+            toast.innerHTML = message;
+            toast.style.position = 'absolute';
+            toast.style.backgroundColor = 'rgba(0,0,0,0.7)';
+            toast.style.color = 'white';
+            toast.style.padding = '5px 10px';
+            toast.style.borderRadius = '4px';
+            toast.style.fontSize = '12px';
+            toast.style.zIndex = '1000';
+            toast.style.pointerEvents = 'none';
+            
+            // Position near the element
+            const rect = element.getBoundingClientRect();
+            const canvasRect = document.getElementById('designCanvas').getBoundingClientRect();
+            toast.style.left = (rect.left - canvasRect.left + rect.width / 2) + 'px';
+            toast.style.top = (rect.top - canvasRect.top - 30) + 'px';
+            toast.style.transform = 'translateX(-50%)';
+            
+            document.getElementById('designCanvas').appendChild(toast);
+            
+            // Auto-remove after duration
+            setTimeout(() => {
+                if (toast.parentNode) {
+                    toast.parentNode.removeChild(toast);
+                }
+            }, duration);
+        }
+
+        // Initialize zoom functionality
+        function initializeZoom() {
+            // Get canvas and zoom controls
+            const canvas = document.getElementById('designCanvas');
+            const resetZoomBtn = document.querySelector('#resetZoom');
+            
+            // Set initial zoom level based on page type
+            if ('@Model.CurrentPage' === 'EmployeeDashboard') {
+                // Start with a slightly zoomed out view for EmployeeDashboard
+                currentZoomLevel = 0.8;
+            }
+            
+            // Apply zoom to canvas with initial zoom level
+            applyCanvasZoom(currentZoomLevel);
+        }
+        
+        // Function to apply zoom level to canvas
+        function applyCanvasZoom(zoomLevel) {
+            const canvas = document.getElementById('designCanvas');
+            const resetZoomBtn = document.querySelector('#resetZoom');
+            
+            if (!canvas) return;
+            
+            // Store previous zoom for position calculations
+            const prevZoom = currentZoomLevel;
+            
+            // Update zoom level globally
+            currentZoomLevel = zoomLevel;
+            
+            // Update display
+            if (resetZoomBtn) {
+                resetZoomBtn.textContent = `${Math.round(zoomLevel * 100)}%`;
+            }
+            
+            // Calculate the maximum y position of any element
+            let maxY = 0;
+            let maxX = 0;
+            elements.forEach(element => {
+                const elementBottom = element.y + element.height;
+                const elementRight = element.x + element.width;
+                if (elementBottom > maxY) {
+                    maxY = elementBottom;
+                }
+                if (elementRight > maxX) {
+                    maxX = elementRight;
+                }
+            });
+            
+            // Add padding to ensure elements aren't cut off
+            maxY += 50;
+            maxX += 50;
+            
+            // Apply transform
+            canvas.style.transformOrigin = 'top left';
+            canvas.style.transform = `scale(${zoomLevel})`;
+            
+            // Get base height for the current page type
+            const baseHeight = ('@Model.CurrentPage' === 'EmployeeDashboard') ? 700 : 600;
+            const baseWidth = 960; // Standard width
+            
+            // Ensure canvas is large enough to contain all elements
+            const minRequiredHeight = Math.max(baseHeight, maxY);
+            const minRequiredWidth = Math.max(baseWidth, maxX);
+            
+            if (zoomLevel < 1) {
+                // When zooming out, increase visible dimensions to accommodate all elements
+                canvas.style.height = `${minRequiredHeight / zoomLevel}px`;
+                canvas.style.width = `${minRequiredWidth / zoomLevel}px`;
+                
+                // Add some extra padding to ensure scrollability
+                canvas.parentElement.style.paddingBottom = '100px';
+            } else {
+                // When at 100% or zooming in, ensure all elements fit
+                canvas.style.height = `${minRequiredHeight}px`;
+                canvas.style.width = '100%';
+                canvas.parentElement.style.paddingBottom = '20px';
+            }
+            
+            // Set overflow to visible for the canvas container
+            canvas.parentElement.style.overflow = 'visible';
+            
+            // Make sure the canvas parent allows scroll if content overflows
+            canvas.parentElement.parentElement.style.overflow = 'auto';
+            
+            console.log(`Zoom applied: ${zoomLevel}, Canvas height: ${canvas.style.height}, Canvas width: ${canvas.style.width}`);
+        }
+
+        // Function to initialize product info
+        function initProductInfo() {
+            if (!currentElement) {
+                console.error("No current element when initializing product info");
+                return;
+            }
+
+            const productInfoContainer = document.getElementById('productInfoContainer');
+            const productDetailsForm = document.getElementById('productDetailsForm');
+            const productIngredientsList = document.getElementById('ingredientsList');
+            const noIngredientsMsg = document.getElementById('noIngredientsMsg');
+            const ingredientsTable = document.getElementById('ingredientsTable');
+            const addIngredientBtn = document.getElementById('addIngredientBtn');
+            
+            // Ensure product details form is visible
+            if (productDetailsForm) {
+                productDetailsForm.style.display = 'block';
+            }
+
+            // Initialize ingredients list
+            if (currentElement.ingredients && currentElement.ingredients.length > 0) {
+                if (noIngredientsMsg) noIngredientsMsg.style.display = 'none';
+                if (ingredientsTable) ingredientsTable.style.display = 'table';
+                renderIngredientsList();
+            } else {
+                if (noIngredientsMsg) noIngredientsMsg.style.display = 'block';
+                if (ingredientsTable) ingredientsTable.style.display = 'none';
+            }
+            
+            // Remove any existing event listener to avoid duplicates
+            if (addIngredientBtn) {
+                const newAddIngredientBtn = addIngredientBtn.cloneNode(true);
+                if (addIngredientBtn.parentNode) {
+                    addIngredientBtn.parentNode.replaceChild(newAddIngredientBtn, addIngredientBtn);
+                }
+                newAddIngredientBtn.addEventListener('click', addNewIngredient);
+            }
+        }
+        
+        // Function to render the ingredients list
+        function renderIngredientsList() {
+            if (!currentElement || !currentElement.ingredients) {
+                console.error("Cannot render ingredients: currentElement or ingredients missing");
+                return;
+            }
+            
+            const ingredientsList = document.getElementById('ingredientsList');
+            const noIngredientsMsg = document.getElementById('noIngredientsMsg');
+            const ingredientsTable = document.getElementById('ingredientsTable');
+            
+            if (!ingredientsList || !noIngredientsMsg || !ingredientsTable) {
+                console.error("Required DOM elements for ingredients not found");
+                return;
+            }
+            
+            // Clear existing rows
+            ingredientsList.innerHTML = '';
+            
+            // Check if there are ingredients
+            if (currentElement.ingredients.length === 0) {
+                noIngredientsMsg.style.display = 'block';
+                ingredientsTable.style.display = 'none';
+                return;
+            }
+            
+            // Show ingredients table and hide the message
+            noIngredientsMsg.style.display = 'none';
+            ingredientsTable.style.display = 'table';
+            
+            // Add each ingredient to the table
+            currentElement.ingredients.forEach((ingredient, index) => {
+                if (!ingredient) return; // Skip null/undefined ingredients
+                
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${ingredient.ingredientName || 'Unknown'}</td>
+                    <td>${ingredient.quantity || 0}</td>
+                    <td>${ingredient.unit || ''}</td>
+                    <td>${ingredient.notes || ''}</td>
+                    <td>
+                        <button type="button" class="btn btn-sm btn-primary me-1 edit-ingredient" data-index="${index}">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-danger delete-ingredient" data-index="${index}">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </td>
+                `;
+                ingredientsList.appendChild(row);
+            });
+            
+            // Add event listeners to edit and delete buttons
+            document.querySelectorAll('.edit-ingredient').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const index = parseInt(this.getAttribute('data-index'));
+                    if (isNaN(index)) {
+                        console.error("Invalid ingredient index");
+                        return;
+                    }
+                    editIngredient(index);
+                });
+            });
+            
+            document.querySelectorAll('.delete-ingredient').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const index = parseInt(this.getAttribute('data-index'));
+                    if (isNaN(index)) {
+                        console.error("Invalid ingredient index");
+                        return;
+                    }
+                    deleteIngredient(index);
+                });
+            });
+        }
+        
+        // Function to add a new ingredient
+        function addNewIngredient() {
+            // Create modal to add ingredient
+            const modalHtml = `
+                <div class="modal fade" id="ingredientModal" tabindex="-1" aria-labelledby="ingredientModalLabel" aria-hidden="true">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="ingredientModalLabel">Add Ingredient</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <form id="ingredientForm">
+                                    <div class="mb-3">
+                                        <label for="ingredientName" class="form-label">Ingredient Name</label>
+                                        <input type="text" class="form-control" id="ingredientName" required>
+                                    </div>
+                                    <div class="row mb-3">
+                                        <div class="col-7">
+                                            <label for="ingredientQuantity" class="form-label">Quantity</label>
+                                            <input type="number" class="form-control" id="ingredientQuantity" min="0" step="0.01" required>
+                                        </div>
+                                        <div class="col-5">
+                                            <label for="ingredientUnit" class="form-label">Unit</label>
+                                            <select class="form-select" id="ingredientUnit" required>
+                                                <option value="g">Grams (g)</option>
+                                                <option value="kg">Kilograms (kg)</option>
+                                                <option value="ml">Milliliters (ml)</option>
+                                                <option value="l">Liters (l)</option>
+                                                <option value="cup">Cup</option>
+                                                <option value="tbsp">Tablespoon</option>
+                                                <option value="tsp">Teaspoon</option>
+                                                <option value="oz">Ounce (oz)</option>
+                                                <option value="lb">Pound (lb)</option>
+                                                <option value="piece">Piece</option>
+                                                <option value="slice">Slice</option>
+                                                <option value="clove">Clove</option>
+                                                <option value="pinch">Pinch</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="ingredientNotes" class="form-label">Notes (Optional)</label>
+                                        <textarea class="form-control" id="ingredientNotes" rows="2"></textarea>
+                                    </div>
+                                </form>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                <button type="button" class="btn btn-primary" id="saveIngredientBtn">Save</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Append modal to body
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            
+            // Initialize the modal
+            const modal = new bootstrap.Modal(document.getElementById('ingredientModal'));
+            modal.show();
+            
+            // Add save button event handler
+            document.getElementById('saveIngredientBtn').addEventListener('click', function() {
+                const form = document.getElementById('ingredientForm');
+                
+                // Basic validation
+                if (!form.checkValidity()) {
+                    form.reportValidity();
+                    return;
+                }
+                
+                // Get ingredient data
+                const ingredient = {
+                    ingredientName: document.getElementById('ingredientName').value,
+                    quantity: parseFloat(document.getElementById('ingredientQuantity').value),
+                    unit: document.getElementById('ingredientUnit').value,
+                    notes: document.getElementById('ingredientNotes').value
+                };
+                
+                // Add ingredient to current element
+                if (!currentElement.ingredients) {
+                    currentElement.ingredients = [];
+                }
+                currentElement.ingredients.push(ingredient);
+                
+                // Update UI
+                renderIngredientsList();
+                
+                // Close the modal
+                modal.hide();
+                
+                // Remove the modal from DOM
+                modal._element.addEventListener('hidden.bs.modal', function() {
+                    modal._element.remove();
+                });
+            });
+            
+            // Handle modal close event to remove from DOM
+            document.getElementById('ingredientModal').addEventListener('hidden.bs.modal', function() {
+                this.remove();
+            });
+        }
+        
+        // Function to edit an ingredient
+        function editIngredient(index) {
+            const ingredient = currentElement.ingredients[index];
+            
+            // Create modal to edit ingredient
+            const modalHtml = `
+                <div class="modal fade" id="ingredientModal" tabindex="-1" aria-labelledby="ingredientModalLabel" aria-hidden="true">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="ingredientModalLabel">Edit Ingredient</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <form id="ingredientForm">
+                                    <div class="mb-3">
+                                        <label for="ingredientName" class="form-label">Ingredient Name</label>
+                                        <input type="text" class="form-control" id="ingredientName" value="${ingredient.ingredientName}" required>
+                                    </div>
+                                    <div class="row mb-3">
+                                        <div class="col-7">
+                                            <label for="ingredientQuantity" class="form-label">Quantity</label>
+                                            <input type="number" class="form-control" id="ingredientQuantity" min="0" step="0.01" value="${ingredient.quantity}" required>
+                                        </div>
+                                        <div class="col-5">
+                                            <label for="ingredientUnit" class="form-label">Unit</label>
+                                            <select class="form-select" id="ingredientUnit" required>
+                                                <option value="g" ${ingredient.unit === 'g' ? 'selected' : ''}>Grams (g)</option>
+                                                <option value="kg" ${ingredient.unit === 'kg' ? 'selected' : ''}>Kilograms (kg)</option>
+                                                <option value="ml" ${ingredient.unit === 'ml' ? 'selected' : ''}>Milliliters (ml)</option>
+                                                <option value="l" ${ingredient.unit === 'l' ? 'selected' : ''}>Liters (l)</option>
+                                                <option value="cup" ${ingredient.unit === 'cup' ? 'selected' : ''}>Cup</option>
+                                                <option value="tbsp" ${ingredient.unit === 'tbsp' ? 'selected' : ''}>Tablespoon</option>
+                                                <option value="tsp" ${ingredient.unit === 'tsp' ? 'selected' : ''}>Teaspoon</option>
+                                                <option value="oz" ${ingredient.unit === 'oz' ? 'selected' : ''}>Ounce (oz)</option>
+                                                <option value="lb" ${ingredient.unit === 'lb' ? 'selected' : ''}>Pound (lb)</option>
+                                                <option value="piece" ${ingredient.unit === 'piece' ? 'selected' : ''}>Piece</option>
+                                                <option value="slice" ${ingredient.unit === 'slice' ? 'selected' : ''}>Slice</option>
+                                                <option value="clove" ${ingredient.unit === 'clove' ? 'selected' : ''}>Clove</option>
+                                                <option value="pinch" ${ingredient.unit === 'pinch' ? 'selected' : ''}>Pinch</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="ingredientNotes" class="form-label">Notes (Optional)</label>
+                                        <textarea class="form-control" id="ingredientNotes" rows="2">${ingredient.notes || ''}</textarea>
+                                    </div>
+                                </form>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                <button type="button" class="btn btn-primary" id="saveIngredientBtn">Save</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Append modal to body
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            
+            // Initialize the modal
+            const modal = new bootstrap.Modal(document.getElementById('ingredientModal'));
+            modal.show();
+            
+            // Add save button event handler
+            document.getElementById('saveIngredientBtn').addEventListener('click', function() {
+                const form = document.getElementById('ingredientForm');
+                
+                // Basic validation
+                if (!form.checkValidity()) {
+                    form.reportValidity();
+                    return;
+                }
+                
+                // Update ingredient data
+                currentElement.ingredients[index] = {
+                    ingredientName: document.getElementById('ingredientName').value,
+                    quantity: parseFloat(document.getElementById('ingredientQuantity').value),
+                    unit: document.getElementById('ingredientUnit').value,
+                    notes: document.getElementById('ingredientNotes').value
+                };
+                
+                // Update UI
+                renderIngredientsList();
+                
+                // Close the modal
+                modal.hide();
+                
+                // Remove the modal from DOM
+                modal._element.addEventListener('hidden.bs.modal', function() {
+                    modal._element.remove();
+                });
+            });
+            
+            // Handle modal close event to remove from DOM
+            document.getElementById('ingredientModal').addEventListener('hidden.bs.modal', function() {
+                this.remove();
+            });
+        }
+        
+        // Function to delete an ingredient
+        function deleteIngredient(index) {
+            if (confirm('Are you sure you want to delete this ingredient?')) {
+                currentElement.ingredients.splice(index, 1);
+                renderIngredientsList();
+            }
+        }
+
+// Image rendering fix for PageEditor
+console.log("Adding image debugging and fixes");
+
+// Add an event listener that runs after page initialization
+document.addEventListener("DOMContentLoaded", function() {
+    // Wait for elements to be fully processed
+    setTimeout(function() {
+        console.log("Running image fix");
+        if (typeof elements !== 'undefined') {
+            console.log("Found elements:", elements.length);
+            
+            // Log all image elements
+            const imageElements = elements.filter(e => e.type === 'Image');
+            console.log("Found image elements:", imageElements.length);
+            
+            if (imageElements.length > 0) {
+                imageElements.forEach((elem, idx) => {
+                    console.log(`Image element ${idx+1}:`, elem.id);
+                    
+                    // Make sure the imageUrl is properly formed
+                    if (elem.imageUrl && elem.imageUrl.includes('data:image') && !elem.imageUrl.includes(',')) {
+                        console.log(`  Fixing malformed imageUrl - missing comma`);
+                        elem.imageUrl = elem.imageUrl.replace('data:image/jpegbase64', 'data:image/jpeg;base64');
+                        elem.imageUrl = elem.imageUrl.replace('data:image/pngbase64', 'data:image/png;base64');
+                    }
+                    
+                    // If there are images, check them
+                    if (elem.images && elem.images.length > 0) {
+                        elem.images.forEach((img, imgIdx) => {
+                            if (img.base64Data && img.base64Data.includes('data:image') && !img.base64Data.includes(',')) {
+                                console.log(`  Fixing malformed base64Data in image ${imgIdx}`);
+                                img.base64Data = img.base64Data.replace('data:image/jpegbase64', 'data:image/jpeg;base64');
+                                img.base64Data = img.base64Data.replace('data:image/pngbase64', 'data:image/png;base64');
+                            }
+                        });
+                    }
+                });
+                
+                // Force a re-render after fixes
+                console.log("Re-rendering elements with fixed image data");
+                renderElements();
+            }
+        }
+    }, 1000);
+});
+
+// Override the renderElements function to ensure proper image rendering
+const originalRenderElements = renderElements;
+renderElements = function() {
+    console.log("Enhanced renderElements called");
+    
+    // Call the original function
+    originalRenderElements();
+    
+    // Now enhance any image elements that were rendered
+    setTimeout(function() {
+        document.querySelectorAll('.element-item').forEach(elem => {
+            // Check if this is an image element that's not rendering properly
+            if (elem.style.backgroundImage === 'none' || elem.style.backgroundImage === '') {
+                const elementId = elem.id;
+                const matchingElement = elements.find(e => e.id === elementId && e.type === 'Image');
+                
+                if (matchingElement && matchingElement.imageUrl) {
+                    console.log(`Fixing element display for ${elementId}`);
+                    elem.style.backgroundImage = `url(${matchingElement.imageUrl})`;
+                    elem.style.backgroundSize = 'cover';
+                    elem.style.backgroundPosition = 'center';
+                }
+            }
+        });
+    }, 100);
+};
+ </script>
+} 

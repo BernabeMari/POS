@@ -1,0 +1,674 @@
+@page
+@model POS.Areas.Employee.Pages.Cashier.IndexModel
+
+@{
+    ViewData["Title"] = "Cashier Dashboard";
+}
+
+@Html.AntiForgeryToken()
+
+<div class="container mt-4">
+    <div id="templateContent">
+        <div class="d-flex justify-content-center">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+        <p class="text-center mt-2">Loading template...</p>
+    </div>
+    
+    <div id="pageContent" class="d-none">
+        <!-- This will be populated by the template or default content -->
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        let activeTab = 'pos-tab';
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            fetch('/api/templates/active?pageName=CashierDashboard')
+                .then(response => response.json())
+                .then(data => {
+                    if (data && data.elements) {
+                        const templateContent = document.getElementById('templateContent');
+                        if (templateContent) {
+                            templateContent.style.display = 'none';
+                        }
+                        
+                        const pageContent = document.getElementById('pageContent');
+                        if (pageContent) {
+                            pageContent.classList.remove('d-none');
+                            // Apply background color from template
+                            if (data.backgroundColor) {
+                                pageContent.style.backgroundColor = data.backgroundColor;
+                                document.body.style.backgroundColor = data.backgroundColor;
+                            }
+                            renderTemplate(data.elements);
+                        }
+                    } else {
+                        showDefaultDashboard();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading template:', error);
+                    showDefaultDashboard();
+                });
+        });
+        
+        // Function to show toast notifications
+        function showToast(message, type = 'primary') {
+            // Create toast container if it doesn't exist
+            let toastContainer = document.getElementById('toast-container');
+            if (!toastContainer) {
+                toastContainer = document.createElement('div');
+                toastContainer.id = 'toast-container';
+                toastContainer.className = 'position-fixed top-0 end-0 p-3';
+                toastContainer.style.zIndex = '1050';
+                document.body.appendChild(toastContainer);
+            }
+            
+            // Create toast element
+            const toastId = 'toast-' + Date.now();
+            const toast = document.createElement('div');
+            toast.id = toastId;
+            toast.className = `toast align-items-center text-white bg-${type} border-0`;
+            toast.role = 'alert';
+            toast.ariaLive = 'assertive';
+            toast.ariaAtomic = 'true';
+            toast.innerHTML = `
+                <div class="d-flex">
+                    <div class="toast-body">
+                        ${message}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            `;
+            
+            toastContainer.appendChild(toast);
+            
+            // Initialize and show the toast
+            const toastInstance = new bootstrap.Toast(toast, { autohide: true, delay: 5000 });
+            toastInstance.show();
+            
+            // Remove from DOM after hidden
+            toast.addEventListener('hidden.bs.toast', function() {
+                toast.remove();
+            });
+        }
+        
+        // Function to complete an order - this will properly update ingredient stock
+        function completeOrder(orderId) {
+            if (!confirm('Are you sure you want to mark this order as completed?')) {
+                return;
+            }
+            
+            fetch(`?handler=CompleteOrder&orderId=${orderId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to complete order');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data && data.success) {
+                    showToast('Order marked as completed and ingredient stock updated!', 'success');
+                    
+                    // Refresh the order display
+                    loadCurrentOrders(document.querySelector('#current-orders-content'));
+                } else {
+                    showToast('Failed to complete order: ' + (data.message || 'Unknown error'), 'danger');
+                }
+            })
+            .catch(error => {
+                console.error('Error completing order:', error);
+                showToast('Failed to complete order. Please try again.', 'danger');
+            });
+        }
+        
+        // Function to update order status
+        function updateOrderStatus(orderId, status) {
+            if (status === 'Complete' || status === 'Completed') {
+                // If completing, use the complete function
+                return completeOrder(orderId);
+            }
+            
+            fetch(`?handler=UpdateStatus&orderId=${orderId}&status=${status}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to update order status');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data && data.success) {
+                    showToast(`Order status updated to ${status}`, 'success');
+                    
+                    // Refresh the orders display
+                    loadCurrentOrders(document.querySelector('#current-orders-content'));
+                } else {
+                    showToast('Failed to update status: ' + (data.message || 'Unknown error'), 'danger');
+                }
+            })
+            .catch(error => {
+                console.error('Error updating status:', error);
+                showToast('Failed to update status. Please try again.', 'danger');
+            });
+        }
+        
+        function renderTemplate(elements) {
+            const container = document.getElementById('pageContent');
+            if (!container) return;
+            
+            container.innerHTML = '';
+            
+            // Create a relative positioned container for absolute positioned elements
+            const designCanvas = document.createElement('div');
+            designCanvas.className = 'position-relative';
+            designCanvas.style.height = '700px';
+            container.appendChild(designCanvas);
+            
+            // Render each element
+            elements.forEach(element => {
+                const elementDiv = document.createElement('div');
+                elementDiv.className = 'position-absolute';
+                elementDiv.id = element.id;
+                elementDiv.style.left = element.x + 'px';
+                elementDiv.style.top = element.y + 'px';
+                elementDiv.style.width = element.width + 'px';
+                elementDiv.style.height = element.height + 'px';
+                
+                // Apply any additional styles
+                if (element.additionalStyles) {
+                    elementDiv.style.cssText += element.additionalStyles;
+                }
+                
+                if (element.type === 'Label') {
+                    elementDiv.className += ' d-flex align-items-center';
+                    elementDiv.style.color = element.color;
+                    elementDiv.style.fontSize = '16px';
+                    elementDiv.innerHTML = element.text;
+                }
+                else if (element.type === 'Button') {
+                    elementDiv.className += ' btn';
+                    elementDiv.style.backgroundColor = element.color;
+                    elementDiv.style.color = '#fff';
+                    elementDiv.style.fontSize = '14px';
+                    elementDiv.innerHTML = element.text;
+                    
+                    // Add event listener for logout button
+                    if (element.id === 'logout-button') {
+                        elementDiv.addEventListener('click', function() {
+                            document.getElementById('logoutForm').submit();
+                        });
+                    }
+                }
+                else if (element.type === 'ContentPanel') {
+                    elementDiv.className += ' card';
+                    
+                    // Create card header
+                    const cardHeader = document.createElement('div');
+                    cardHeader.className = 'card-header';
+                    cardHeader.innerHTML = `<h5 class="mb-0">${element.text}</h5>`;
+                    elementDiv.appendChild(cardHeader);
+                    
+                    // Create card body
+                    const cardBody = document.createElement('div');
+                    cardBody.className = 'card-body p-0';
+                    cardBody.id = `${element.id}-content`;
+                    elementDiv.appendChild(cardBody);
+                    
+                    // Load appropriate content based on panel ID
+                    if (element.id === 'transaction-history') {
+                        loadTransactionHistory(cardBody);
+                    }
+                    else if (element.id === 'current-orders') {
+                        loadCurrentOrders(cardBody);
+                    }
+                    else if (element.id === 'order-shortcuts') {
+                        loadOrderShortcuts(cardBody);
+                    }
+                    else if (element.id === 'shift-summary') {
+                        loadShiftSummary(cardBody);
+                    }
+                }
+                
+                designCanvas.appendChild(elementDiv);
+            });
+            
+            // Add hidden logout form
+            const logoutForm = document.createElement('form');
+            logoutForm.id = 'logoutForm';
+            logoutForm.method = 'post';
+            logoutForm.action = '/Logout';
+            logoutForm.style.display = 'none';
+            document.body.appendChild(logoutForm);
+        }
+        
+        function showDefaultDashboard() {
+            const templateContent = document.getElementById('templateContent');
+            if (templateContent) {
+                templateContent.innerHTML = `
+                    <div class="row mb-4">
+                        <div class="col-md-12">
+                            <div class="alert alert-primary">
+                                <h4 class="alert-heading">Cashier Dashboard</h4>
+                                <p>Welcome to your dashboard. Here you can view transaction history, manage current orders, access quick order shortcuts, and see your shift summary.</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card mb-4">
+                                <div class="card-header bg-primary text-white">
+                                    <h5 class="mb-0">Transaction History</h5>
+                                </div>
+                                <div class="card-body p-0" id="transaction-history-content">
+                                    Loading...
+                                </div>
+                            </div>
+                            
+                            <div class="card mb-4">
+                                <div class="card-header bg-primary text-white">
+                                    <h5 class="mb-0">Order Shortcuts</h5>
+                                </div>
+                                <div class="card-body p-0" id="order-shortcuts-content">
+                                    Loading...
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="card mb-4">
+                                <div class="card-header bg-primary text-white">
+                                    <h5 class="mb-0">Current Orders</h5>
+                                </div>
+                                <div class="card-body p-0" id="current-orders-content">
+                                    Loading...
+                                </div>
+                            </div>
+                            
+                            <div class="card mb-4">
+                                <div class="card-header bg-primary text-white">
+                                    <h5 class="mb-0">Shift Summary</h5>
+                                </div>
+                                <div class="card-body p-0" id="shift-summary-content">
+                                    Loading...
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                // Load content into panels
+                loadTransactionHistory(document.getElementById('transaction-history-content'));
+                loadCurrentOrders(document.getElementById('current-orders-content'));
+                loadOrderShortcuts(document.getElementById('order-shortcuts-content'));
+                loadShiftSummary(document.getElementById('shift-summary-content'));
+            }
+        }
+        
+        function loadTransactionHistory(container) {
+            // Simulate transaction data
+            const transactionData = {
+                today: [
+                    { id: "#TRX-4825", time: "10:15 AM", amount: "$27.50", items: 3, payment: "Credit Card" },
+                    { id: "#TRX-4824", time: "9:42 AM", amount: "$15.75", items: 2, payment: "Cash" },
+                    { id: "#TRX-4823", time: "9:18 AM", amount: "$32.25", items: 4, payment: "Credit Card" },
+                    { id: "#TRX-4822", time: "8:55 AM", amount: "$8.50", items: 1, payment: "Mobile Payment" }
+                ],
+                todayTotal: "$84.00",
+                todayCount: 4
+            };
+            
+            let html = `
+                <div class="p-3">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="mb-0">Today's Transactions</h6>
+                        <div>
+                            <span class="badge bg-primary">${transactionData.todayCount} Transactions</span>
+                            <span class="badge bg-success ms-2">${transactionData.todayTotal}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="list-group mb-3">
+            `;
+            
+            for (const transaction of transactionData.today) {
+                let paymentClass;
+                if (transaction.payment === "Credit Card") paymentClass = "primary";
+                else if (transaction.payment === "Cash") paymentClass = "success";
+                else paymentClass = "info";
+                
+                html += `
+                    <div class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>${transaction.id}</strong>
+                                <div class="small text-muted">${transaction.time} • ${transaction.items} items</div>
+                            </div>
+                            <div class="text-end">
+                                <div>${transaction.amount}</div>
+                                <span class="badge bg-${paymentClass} small">${transaction.payment}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            html += `
+                    </div>
+                    
+                    <div class="text-end">
+                        <button class="btn btn-primary">
+                            <i class="bi bi-clock-history"></i> View All Transactions
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            container.innerHTML = html;
+        }
+        
+        // Add decryption function for usernames
+        function decryptUsername(cipherText) {
+            if (!cipherText || cipherText === 'Walk-in') return cipherText;
+            
+            try {
+                let result = "";
+                
+                // Get the shift value (use default 7 if not set)
+                const shiftValue = window.caesarShiftValue || 7;
+                
+                // Apply reverse Caesar cipher shift to each character
+                for (let i = 0; i < cipherText.length; i++) {
+                    const c = cipherText.charAt(i);
+                    
+                    // Only decrypt letters (both uppercase and lowercase)
+                    if (/[a-zA-Z]/.test(c)) {
+                        const baseChar = /[A-Z]/.test(c) ? 'A'.charCodeAt(0) : 'a'.charCodeAt(0);
+                        // Apply reverse shift with wrap-around within the alphabet (mod 26)
+                        // Add 26 before modulo to handle negative numbers
+                        const decryptedCharCode = ((c.charCodeAt(0) - baseChar - shiftValue + 26) % 26) + baseChar;
+                        result += String.fromCharCode(decryptedCharCode);
+                    } else {
+                        // Non-letter characters remain unchanged
+                        result += c;
+                    }
+                }
+                
+                return result;
+            } catch (error) {
+                console.error('Error decrypting username:', error);
+                return cipherText; // Return encrypted text on error
+            }
+        }
+        
+        function loadCurrentOrders(container) {
+            // Show loading indicator
+            container.innerHTML = '<div class="d-flex justify-content-center p-3"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+            
+            // Fetch current orders
+            fetch('/api/orders/current')
+                .then(response => response.json())
+                .then(orders => {
+                    let html = '<div class="list-group">';
+                    
+                    if (orders.length === 0) {
+                        html += '<div class="list-group-item py-3">No current orders</div>';
+                    } else {
+                        orders.forEach(order => {
+                            const statusClass = getStatusBadgeClass(order.status);
+                            
+                            html += `
+                                <div class="list-group-item">
+                                    <div class="d-flex justify-content-between">
+                                        <div>
+                                            <strong>#${order.id} - ${order.productName}</strong>
+                                            <div class="small text-muted">
+                                                Customer: ${decryptUsername(order.user?.userName) || 'Walk-in'} • Qty: ${order.quantity} • 
+                                                ${new Date(order.createdAt).toLocaleTimeString()}
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <div class="mb-1">
+                                                <span class="badge ${statusClass}">${order.status}</span>
+                                            </div>
+                                            <div class="btn-group btn-group-sm">
+                                                <button class="btn btn-outline-primary" onclick="viewOrderDetails(${order.id})">
+                                                    <i class="bi bi-eye"></i> View
+                                                </button>
+                                                <button class="btn btn-outline-success" onclick="completeOrder(${order.id})">
+                                                    <i class="bi bi-check-circle"></i> Complete
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                    }
+                    
+                    html += '</div>';
+                    container.innerHTML = html;
+                })
+                .catch(error => {
+                    console.error('Error loading current orders:', error);
+                    container.innerHTML = '<div class="alert alert-danger">Error loading current orders</div>';
+                });
+        }
+        
+        // Helper function to get the appropriate badge class for order status
+        function getStatusBadgeClass(status) {
+            switch(status) {
+                case 'Pending':
+                    return 'bg-warning text-dark';
+                case 'OrderReceived':
+                case 'Processing':
+                    return 'bg-primary';
+                case 'OnGoing':
+                    return 'bg-info';
+                case 'Completed':
+                case 'Complete':
+                    return 'bg-success';
+                case 'Cancelled':
+                    return 'bg-danger';
+                default:
+                    return 'bg-secondary';
+            }
+        }
+        
+        // Function to view order details
+        function viewOrderDetails(orderId) {
+            // Implement order details view
+            showToast(`Viewing details for order #${orderId}`, 'info');
+        }
+        
+        function loadOrderShortcuts(container) {
+            // Simulate popular items data
+            const shortcutData = {
+                popularItems: [
+                    { name: "Coffee (Regular)", price: "$3.50", image: "coffee.jpg" },
+                    { name: "Latte", price: "$4.75", image: "latte.jpg" },
+                    { name: "Blueberry Muffin", price: "$3.25", image: "muffin.jpg" },
+                    { name: "Chicken Sandwich", price: "$7.95", image: "sandwich.jpg" }
+                ],
+                combos: [
+                    { name: "Coffee & Muffin", price: "$6.25", discount: "Save $0.50" },
+                    { name: "Sandwich & Drink", price: "$10.95", discount: "Save $1.25" }
+                ]
+            };
+            
+            let html = `
+                <div class="p-3">
+                    <h6 class="mb-3">Popular Items</h6>
+                    <div class="row g-2 mb-3">
+            `;
+            
+            for (const item of shortcutData.popularItems) {
+                html += `
+                    <div class="col-6">
+                        <div class="border rounded p-2 h-100">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <div class="small fw-bold">${item.name}</div>
+                                    <div class="small text-muted">${item.price}</div>
+                                </div>
+                                <button class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-plus"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            html += `
+                    </div>
+                    
+                    <h6 class="mb-3">Combo Deals</h6>
+                    <div class="list-group mb-3">
+            `;
+            
+            for (const combo of shortcutData.combos) {
+                html += `
+                    <div class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <div>${combo.name}</div>
+                                <div class="small text-success">${combo.discount}</div>
+                            </div>
+                            <div>
+                                <span class="me-2">${combo.price}</span>
+                                <button class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-plus"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            html += `
+                    </div>
+                    
+                    <div class="text-end">
+                        <button class="btn btn-primary">
+                            <i class="bi bi-grid"></i> Full Menu
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            container.innerHTML = html;
+        }
+        
+        function loadShiftSummary(container) {
+            // Simulate shift data
+            const shiftData = {
+                startTime: "8:00 AM",
+                endTime: "4:00 PM",
+                currentTime: "11:24 AM",
+                transactions: 4,
+                sales: "$84.00",
+                cashDrawer: {
+                    opening: "$200.00",
+                    current: "$237.25",
+                    cash: "$53.25",
+                    card: "$30.75"
+                }
+            };
+            
+            // Calculate percentage of shift completed
+            const startHours = parseInt(shiftData.startTime.split(':')[0]);
+            const currentHours = parseInt(shiftData.currentTime.split(':')[0]);
+            const endHours = parseInt(shiftData.endTime.split(':')[0]);
+            const totalHours = endHours - startHours;
+            const hoursCompleted = currentHours - startHours;
+            const percentComplete = Math.round((hoursCompleted / totalHours) * 100);
+            
+            let html = `
+                <div class="p-3">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="mb-0">Current Shift</h6>
+                        <span>${shiftData.startTime} - ${shiftData.endTime}</span>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between small mb-1">
+                            <span>Shift Progress</span>
+                            <span>${percentComplete}% complete</span>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar" role="progressbar" style="width: ${percentComplete}%" 
+                                aria-valuenow="${percentComplete}" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="row text-center mb-3">
+                        <div class="col-6">
+                            <div class="border rounded p-2">
+                                <div class="small text-muted">Transactions</div>
+                                <h5 class="mb-0">${shiftData.transactions}</h5>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="border rounded p-2">
+                                <div class="small text-muted">Sales</div>
+                                <h5 class="mb-0">${shiftData.sales}</h5>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <h6 class="mb-3">Cash Drawer</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <tbody>
+                                <tr>
+                                    <td>Opening Balance</td>
+                                    <td class="text-end">${shiftData.cashDrawer.opening}</td>
+                                </tr>
+                                <tr>
+                                    <td>Cash Payments</td>
+                                    <td class="text-end">${shiftData.cashDrawer.cash}</td>
+                                </tr>
+                                <tr>
+                                    <td>Card Payments</td>
+                                    <td class="text-end">${shiftData.cashDrawer.card}</td>
+                                </tr>
+                                <tr class="table-active fw-bold">
+                                    <td>Current Balance</td>
+                                    <td class="text-end">${shiftData.cashDrawer.current}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between">
+                        <button class="btn btn-outline-primary">
+                            <i class="bi bi-cash"></i> Cash Out
+                        </button>
+                        <button class="btn btn-primary">
+                            <i class="bi bi-printer"></i> Shift Report
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            container.innerHTML = html;
+        }
+    </script>
+} 

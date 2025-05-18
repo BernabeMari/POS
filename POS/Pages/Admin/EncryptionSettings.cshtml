@@ -1,0 +1,131 @@
+@page
+@model POS.Pages.Admin.EncryptionSettingsModel
+@{
+    ViewData["Title"] = "Encryption Settings";
+}
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-lg-8 offset-lg-2">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Encryption Settings</h4>
+                </div>
+                <div class="card-body">
+                    @if (!string.IsNullOrEmpty(Model.SuccessMessage))
+                    {
+                        <div class="alert alert-success">
+                            @Model.SuccessMessage
+                        </div>
+                    }
+                    
+                    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+                    {
+                        <div class="alert alert-danger">
+                            @Model.ErrorMessage
+                        </div>
+                    }
+                    
+                    <div class="alert alert-info">
+                        <strong>Important:</strong> Changing the Caesar cipher shift value will re-encrypt all user data in the database. 
+                        This operation cannot be undone. Make sure you have a database backup before proceeding.
+                    </div>
+                    
+                    <div class="mb-4">
+                        <h5>Current Shift Value: @Model.CurrentShiftValue</h5>
+                        <p>The shift value is used to encrypt sensitive data like usernames and email addresses.</p>
+                    </div>
+                    
+                    <form method="post" id="updateShiftForm">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="newShiftValue" class="form-label">New Shift Value:</label>
+                                <input type="number" id="newShiftValue" name="newShiftValue" min="1" max="25" 
+                                       class="form-control" value="@Model.CurrentShiftValue" required />
+                                <div class="form-text">Enter a value between 1 and 25.</div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-12">
+                                <button type="button" class="btn btn-primary" onclick="confirmUpdate()">
+                                    Update Shift Value
+                                </button>
+                                <a href="/Admin/Index" class="btn btn-secondary ms-2">Back to Dashboard</a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <div class="card mt-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">Test Encryption</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" asp-page-handler="TestEncryption">
+                        <div class="mb-3">
+                            <label for="textToEncrypt" class="form-label">Text to Encrypt:</label>
+                            <input type="text" id="textToEncrypt" name="textToEncrypt" class="form-control" 
+                                   value="@Model.TextToEncrypt" required />
+                        </div>
+                        
+                        @if (!string.IsNullOrEmpty(Model.EncryptedText))
+                        {
+                            <div class="mb-3">
+                                <label class="form-label">Encrypted Result:</label>
+                                <input type="text" class="form-control" value="@Model.EncryptedText" readonly />
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Decryption Test:</label>
+                                <input type="text" class="form-control" value="@Model.DecryptedText" readonly />
+                            </div>
+                        }
+                        
+                        <button type="submit" class="btn btn-info">Test Encryption</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Confirmation Modal -->
+<div class="modal fade" id="confirmationModal" tabindex="-1" aria-labelledby="confirmationModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title" id="confirmationModalLabel">Confirm Shift Value Update</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p><strong>Warning:</strong> You are about to change the encryption shift value. This will:</p>
+                <ul>
+                    <li>Re-encrypt all usernames, emails, and other sensitive data in the database</li>
+                    <li>Potentially cause issues if the operation is interrupted</li>
+                </ul>
+                <p>Are you sure you want to proceed?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" onclick="submitForm()">Yes, Update Shift Value</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function confirmUpdate() {
+            // Show the confirmation modal
+            var modal = new bootstrap.Modal(document.getElementById('confirmationModal'));
+            modal.show();
+        }
+        
+        function submitForm() {
+            // Submit the form
+            document.getElementById('updateShiftForm').submit();
+        }
+    </script>
+} 

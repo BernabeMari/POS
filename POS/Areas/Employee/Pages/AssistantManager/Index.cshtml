@@ -1,0 +1,1042 @@
+@page
+@model POS.Areas.Employee.Pages.AssistantManager.IndexModel
+
+@{
+    ViewData["Title"] = "Assistant Manager Dashboard";
+}
+
+@Html.AntiForgeryToken()
+
+<div class="container mt-4">
+    <div id="templateContent">
+        <div class="d-flex justify-content-center">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+        <p class="text-center mt-2">Loading template...</p>
+    </div>
+    
+    <div id="pageContent" class="d-none">
+        <!-- This will be populated by the template or default content -->
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Set the Caesar shift value from the server
+        window.caesarShiftValue = @Model.CaesarShiftValue;
+        console.log("Using Caesar shift value:", window.caesarShiftValue);
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            fetch('/api/templates/active?pageName=AssistantManagerDashboard')
+                .then(response => response.json())
+                .then(data => {
+                    if (data && data.elements) {
+                        const templateContent = document.getElementById('templateContent');
+                        if (templateContent) {
+                            templateContent.style.display = 'none';
+                        }
+                        
+                        const pageContent = document.getElementById('pageContent');
+                        if (pageContent) {
+                            pageContent.classList.remove('d-none');
+                            // Apply background color from template
+                            if (data.backgroundColor) {
+                                pageContent.style.backgroundColor = data.backgroundColor;
+                                document.body.style.backgroundColor = data.backgroundColor;
+                            }
+                            renderTemplate(data.elements);
+                        }
+                    } else {
+                        showDefaultDashboard();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading template:', error);
+                    showDefaultDashboard();
+                });
+        });
+        
+        function renderTemplate(elements) {
+            const container = document.getElementById('pageContent');
+            if (!container) return;
+            
+            container.innerHTML = '';
+            
+            // Create a relative positioned container for absolute positioned elements
+            const designCanvas = document.createElement('div');
+            designCanvas.className = 'position-relative';
+            designCanvas.style.height = '800px'; // Increase height to prevent overlapping
+            designCanvas.style.overflowY = 'auto'; // Add scrolling to the entire canvas
+            container.appendChild(designCanvas);
+            
+            // Render each element
+            elements.forEach(element => {
+                const elementDiv = document.createElement('div');
+                elementDiv.className = 'position-absolute';
+                elementDiv.id = element.id;
+                elementDiv.style.left = element.x + 'px';
+                elementDiv.style.top = element.y + 'px';
+                elementDiv.style.width = element.width + 'px';
+                elementDiv.style.height = element.height + 'px';
+                elementDiv.style.overflowY = 'auto'; // Make each element scrollable
+                
+                // Apply any additional styles
+                if (element.additionalStyles) {
+                    elementDiv.style.cssText += element.additionalStyles;
+                }
+                
+                if (element.type === 'Label') {
+                    elementDiv.className += ' d-flex align-items-center';
+                    elementDiv.style.color = element.color;
+                    elementDiv.style.fontSize = '16px';
+                    elementDiv.innerHTML = element.text;
+                }
+                else if (element.type === 'Button') {
+                    elementDiv.className += ' btn';
+                    elementDiv.style.backgroundColor = element.color;
+                    elementDiv.style.color = '#fff';
+                    elementDiv.style.fontSize = '14px';
+                    elementDiv.innerHTML = element.text;
+                    
+                    // Add event listener for logout button
+                    if (element.id === 'logout-button') {
+                        elementDiv.addEventListener('click', function() {
+                            document.getElementById('logoutForm').submit();
+                        });
+                    }
+                }
+                else if (element.type === 'ContentPanel') {
+                    elementDiv.className += ' card';
+                    
+                    // Create card header
+                    const cardHeader = document.createElement('div');
+                    cardHeader.className = 'card-header';
+                    cardHeader.innerHTML = `<h5 class="mb-0">${element.text}</h5>`;
+                    elementDiv.appendChild(cardHeader);
+                    
+                    // Create card body
+                    const cardBody = document.createElement('div');
+                    cardBody.className = 'card-body p-0';
+                    cardBody.id = `${element.id}-content`;
+                    elementDiv.appendChild(cardBody);
+                    
+                    // Load appropriate content based on panel ID
+                    if (element.id === 'shift-management') {
+                        loadShiftManagement(cardBody);
+                    }
+                    else if (element.id === 'task-tracking') {
+                        loadTaskTracking(cardBody);
+                    }
+                    else if (element.id === 'daily-sales') {
+                        loadDailySales(cardBody);
+                    }
+                    else if (element.id === 'inventory-status') {
+                        loadInventoryStatus(cardBody);
+                    }
+                    // Add support for Manager dashboard panels
+                    else if (element.id === 'store-performance') {
+                        loadStorePerformance(cardBody);
+                    }
+                    else if (element.id === 'staff-activity') {
+                        loadStaffActivity(cardBody);
+                    }
+                    else if (element.id === 'recent-orders') {
+                        loadRecentOrders(cardBody);
+                    }
+                    else if (element.id === 'inventory-alerts') {
+                        loadInventoryAlerts(cardBody);
+                    }
+                }
+                
+                designCanvas.appendChild(elementDiv);
+            });
+            
+            // Add hidden logout form
+            const logoutForm = document.createElement('form');
+            logoutForm.id = 'logoutForm';
+            logoutForm.method = 'post';
+            logoutForm.action = '/Logout';
+            logoutForm.style.display = 'none';
+            document.body.appendChild(logoutForm);
+        }
+        
+        function showDefaultDashboard() {
+            const templateContent = document.getElementById('templateContent');
+            if (templateContent) {
+                templateContent.innerHTML = `
+                    <div class="row mb-4">
+                        <div class="col-md-12">
+                            <div class="alert alert-primary">
+                                <h4 class="alert-heading">Assistant Manager Dashboard</h4>
+                                <p>Welcome to your dashboard. Here you can manage daily operations, track tasks, monitor sales, and check inventory status.</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card mb-4">
+                                <div class="card-header bg-primary text-white">
+                                    <h5 class="mb-0">Shift Management</h5>
+                                </div>
+                                <div class="card-body p-0" id="shift-management-content">
+                                    Loading...
+                                </div>
+                            </div>
+                            
+                            <div class="card mb-4">
+                                <div class="card-header bg-primary text-white">
+                                    <h5 class="mb-0">Daily Sales</h5>
+                                </div>
+                                <div class="card-body p-0" id="daily-sales-content">
+                                    Loading...
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="card mb-4">
+                                <div class="card-header bg-primary text-white">
+                                    <h5 class="mb-0">Task Tracking</h5>
+                                </div>
+                                <div class="card-body p-0" id="task-tracking-content">
+                                    Loading...
+                                </div>
+                            </div>
+                            
+                            <div class="card mb-4">
+                                <div class="card-header bg-primary text-white">
+                                    <h5 class="mb-0">Inventory Status</h5>
+                                </div>
+                                <div class="card-body p-0" id="inventory-status-content">
+                                    Loading...
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                // Load content into panels
+                loadShiftManagement(document.getElementById('shift-management-content'));
+                loadTaskTracking(document.getElementById('task-tracking-content'));
+                loadDailySales(document.getElementById('daily-sales-content'));
+                loadInventoryStatus(document.getElementById('inventory-status-content'));
+            }
+        }
+        
+        function loadShiftManagement(container) {
+            // Simulate shift data
+            const shiftData = {
+                currentShift: "Afternoon (2:00 PM - 10:00 PM)",
+                manager: "Sarah Johnson",
+                staffOnDuty: [
+                    { name: "Emma Thompson", position: "Barista", status: "On duty" },
+                    { name: "Michael Roberts", position: "Cashier", status: "On duty" },
+                    { name: "Jessica Williams", position: "Server", status: "On break" }
+                ],
+                upcomingShift: "Night (10:00 PM - 6:00 AM)",
+                staffOnCall: 2
+            };
+            
+            let html = `
+                <div class="p-3">
+                    <div class="alert alert-light border mb-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-0">Current Shift</h6>
+                                <p class="text-muted mb-0">${shiftData.currentShift}</p>
+                            </div>
+                            <span class="badge bg-success p-2">Active</span>
+                        </div>
+                    </div>
+                    
+                    <h6 class="mb-3">Staff On Duty</h6>
+                    <div class="list-group mb-3">
+            `;
+            
+            for (const staff of shiftData.staffOnDuty) {
+                const statusClass = staff.status === "On duty" ? "success" : "warning";
+                html += `
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>${staff.name}</strong>
+                            <div class="small text-muted">${staff.position}</div>
+                        </div>
+                        <span class="badge bg-${statusClass}">${staff.status}</span>
+                    </div>
+                `;
+            }
+            
+            html += `
+                    </div>
+                    
+                    <div class="d-flex justify-content-between mb-3">
+                        <div>
+                            <h6 class="mb-0">Upcoming Shift</h6>
+                            <p class="text-muted mb-0">${shiftData.upcomingShift}</p>
+                        </div>
+                        <div>
+                            <span class="badge bg-secondary p-2">${shiftData.staffOnCall} staff on call</span>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-outline-primary flex-grow-1">
+                            <i class="bi bi-calendar-week"></i> View Schedule
+                        </button>
+                        <button class="btn btn-primary flex-grow-1">
+                            <i class="bi bi-person-plus"></i> Manage Staff
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            container.innerHTML = html;
+        }
+        
+        function loadTaskTracking(container) {
+            // Simulate task data
+            const taskData = {
+                totalTasks: 14,
+                completed: 8,
+                inProgress: 3,
+                notStarted: 3,
+                criticalTasks: [
+                    { name: "Restock refrigerated items", priority: "High", assignee: "Michael", dueTime: "1:00 PM" },
+                    { name: "Clean and sanitize dining area", priority: "Medium", assignee: "Jessica", dueTime: "2:30 PM" },
+                    { name: "Prepare daily sales report", priority: "High", assignee: "You", dueTime: "4:00 PM" }
+                ]
+            };
+            
+            // Calculate completion percentage
+            const completionPercentage = Math.round((taskData.completed / taskData.totalTasks) * 100);
+            
+            let html = `
+                <div class="p-3">
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="mb-0">Today's Tasks: ${completionPercentage}% Complete</h6>
+                            <span class="small text-muted">${taskData.completed}/${taskData.totalTasks} tasks</span>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-success" role="progressbar" style="width: ${completionPercentage}%" 
+                                aria-valuenow="${completionPercentage}" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="row text-center mb-3">
+                        <div class="col-4">
+                            <div class="border rounded py-2">
+                                <h4 class="mb-0">${taskData.completed}</h4>
+                                <div class="small text-muted">Completed</div>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="border rounded py-2">
+                                <h4 class="mb-0">${taskData.inProgress}</h4>
+                                <div class="small text-muted">In Progress</div>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="border rounded py-2">
+                                <h4 class="mb-0">${taskData.notStarted}</h4>
+                                <div class="small text-muted">Not Started</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <h6 class="mb-3">Priority Tasks</h6>
+                    <div class="list-group mb-3">
+            `;
+            
+            for (const task of taskData.criticalTasks) {
+                const priorityClass = task.priority === "High" ? "danger" : "warning";
+                
+                html += `
+                    <div class="list-group-item">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <strong>${task.name}</strong>
+                                <div class="small">Assigned to: ${task.assignee}</div>
+                            </div>
+                            <div class="text-end">
+                                <span class="badge bg-${priorityClass} mb-1">${task.priority}</span>
+                                <div class="small text-muted">Due: ${task.dueTime}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            html += `
+                    </div>
+                    
+                    <div class="d-flex justify-content-between">
+                        <button class="btn btn-outline-primary">
+                            <i class="bi bi-plus-circle"></i> Add Task
+                        </button>
+                        <button class="btn btn-primary">
+                            <i class="bi bi-list-check"></i> All Tasks
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            container.innerHTML = html;
+        }
+        
+        function loadDailySales(container) {
+            // Simulate sales data
+            const salesData = {
+                totalSales: "$1,842.50",
+                transactions: 64,
+                averageOrder: "$28.79",
+                targetCompletion: "73%",
+                hourlyBreakdown: [
+                    { hour: "8-9 AM", sales: "$125.75" },
+                    { hour: "9-10 AM", sales: "$243.25" },
+                    { hour: "10-11 AM", sales: "$318.50" },
+                    { hour: "11-12 PM", sales: "$425.75" },
+                    { hour: "12-1 PM", sales: "$562.25" }
+                ]
+            };
+            
+            let html = `
+                <div class="p-3">
+                    <div class="row text-center mb-3">
+                        <div class="col-md-4">
+                            <div class="border rounded p-2">
+                                <h4 class="mb-0">${salesData.totalSales}</h4>
+                                <div class="small text-muted">Total Sales</div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="border rounded p-2">
+                                <h4 class="mb-0">${salesData.transactions}</h4>
+                                <div class="small text-muted">Transactions</div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="border rounded p-2">
+                                <h4 class="mb-0">${salesData.averageOrder}</h4>
+                                <div class="small text-muted">Avg Order</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <h6 class="mb-0">Daily Target</h6>
+                            <span>${salesData.targetCompletion}</span>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar" role="progressbar" style="width: 73%" 
+                                aria-valuenow="73" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                    </div>
+                    
+                    <h6 class="mb-2">Hourly Breakdown</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Time</th>
+                                    <th class="text-end">Sales</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+            `;
+            
+            for (const hour of salesData.hourlyBreakdown) {
+                html += `
+                    <tr>
+                        <td>${hour.hour}</td>
+                        <td class="text-end">${hour.sales}</td>
+                    </tr>
+                `;
+            }
+            
+            html += `
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="text-end">
+                        <button class="btn btn-primary">
+                            <i class="bi bi-graph-up"></i> Sales Report
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            container.innerHTML = html;
+        }
+        
+        function loadInventoryStatus(container) {
+            // Simulate inventory status data
+            const inventoryData = [
+                { item: "Whole Milk", status: "Low Stock", quantity: 12, reorderLevel: 20 },
+                { item: "Espresso Beans", status: "In Stock", quantity: 45, reorderLevel: 25 },
+                { item: "Chocolate Syrup", status: "In Stock", quantity: 18, reorderLevel: 15 },
+                { item: "Vanilla Syrup", status: "Critical", quantity: 3, reorderLevel: 10 },
+                { item: "To-Go Cups (Large)", status: "Low Stock", quantity: 35, reorderLevel: 50 }
+            ];
+
+            // Create container
+            const content = document.createElement('div');
+            content.className = 'table-responsive';
+            
+            // Create table
+            const table = document.createElement('table');
+            table.className = 'table table-hover';
+            
+            // Add header
+            table.innerHTML = `
+                <thead>
+                    <tr>
+                        <th>Item</th>
+                        <th>Status</th>
+                        <th>Quantity</th>
+                        <th>Reorder Level</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${inventoryData.map(item => `
+                        <tr class="${item.status === 'Critical' ? 'table-danger' : item.status === 'Low Stock' ? 'table-warning' : ''}">
+                            <td>${item.item}</td>
+                            <td>${item.status}</td>
+                            <td>${item.quantity}</td>
+                            <td>${item.reorderLevel}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            `;
+            
+            content.appendChild(table);
+            container.appendChild(content);
+        }
+
+        // Function to load store performance
+        function loadStorePerformance(container) {
+            // Check if container exists
+            if (!container) {
+                console.warn('Store performance container not found');
+                return;
+            }
+            
+            // Show loading indicator
+            container.innerHTML = `
+                <div class="d-flex justify-content-center p-3">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            `;
+            
+            // Fetch store performance data from API
+            fetch('/api/sales/performance')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch store performance data');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // Check if container still exists
+                    if (!container) {
+                        console.warn('Store performance container no longer exists');
+                        return;
+                    }
+                    
+                    // Create content
+                    const content = document.createElement('div');
+                    content.className = 'p-3';
+                    
+                    // Add daily sales chart
+                    const salesChart = document.createElement('div');
+                    salesChart.className = 'mb-4';
+                    salesChart.innerHTML = `
+                        <h6 class="mb-3">Today's Sales: ${data.todaySales}</h6>
+                        <div class="progress" style="height: 25px;">
+                            <div class="progress-bar bg-success" role="progressbar" style="width: ${data.percentOfDailyGoal}%"></div>
+                        </div>
+                        <div class="d-flex justify-content-between mt-1">
+                            <small>Target: ${data.salesTarget}</small>
+                            <small>${data.percentOfDailyGoal}% of daily goal</small>
+                        </div>
+                    `;
+                    
+                    // Add customer traffic chart
+                    const trafficChart = document.createElement('div');
+                    trafficChart.className = 'mb-4';
+                    trafficChart.innerHTML = `
+                        <h6 class="mb-3">Customer Traffic</h6>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h3 class="mb-0">${data.customerCount}</h3>
+                                <small class="text-muted">Customers today</small>
+                            </div>
+                            <div>
+                                <span class="badge ${data.trafficTrend > 0 ? 'bg-success' : 'bg-warning'}">
+                                    ${data.trafficTrend > 0 ? '+' : ''}${data.trafficTrend}%
+                                </span>
+                                <div class="text-muted small">vs. Avg</div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    // Add top selling items
+                    const topItems = document.createElement('div');
+                    topItems.innerHTML = `
+                        <h6 class="mb-3">Top Selling Items</h6>
+                        <ol class="ps-3">
+                            ${data.topSellingItems.map(item => `
+                                <li>${item.name} - ${item.quantity} sold</li>
+                            `).join('')}
+                        </ol>
+                    `;
+                    
+                    content.appendChild(salesChart);
+                    content.appendChild(trafficChart);
+                    content.appendChild(topItems);
+                    container.appendChild(content);
+                })
+                .catch(error => {
+                    console.error('Error loading store performance:', error);
+                    
+                    // Check if container still exists
+                    if (!container) {
+                        console.warn('Store performance container no longer exists');
+                        return;
+                    }
+                    
+                    container.innerHTML = `
+                        <div class="p-3">
+                            <div class="alert alert-danger">
+                                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                                Failed to load store performance data. Please try refreshing the page.
+                            </div>
+                        </div>
+                    `;
+                });
+        }
+
+        // Function to load staff activity
+        function loadStaffActivity(container) {
+            // Check if container exists
+            if (!container) {
+                console.warn('Staff activity container not found');
+                return;
+            }
+            
+            // Show loading indicator
+            container.innerHTML = `
+                <div class="d-flex justify-content-center p-3">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            `;
+            
+            // Fetch staff activity from API
+            fetch('/api/employees/activity')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch employee activity data');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // Check if container still exists
+                    if (!container) {
+                        console.warn('Staff activity container no longer exists');
+                        return;
+                    }
+                    
+                    // Filter to only show cashiers
+                    const cashiers = data.activeEmployees.filter(employee => 
+                        employee.position && employee.position.toLowerCase().includes('cashier')
+                    );
+                    
+                    // Find top performer among cashiers
+                    let topCashier = {
+                        name: "None",
+                        ordersHandled: 0
+                    };
+                    
+                    if (cashiers.length > 0) {
+                        // Sort cashiers by orders handled
+                        cashiers.sort((a, b) => b.ordersHandled - a.ordersHandled);
+                        topCashier = {
+                            name: cashiers[0].name,
+                            ordersHandled: cashiers[0].ordersHandled
+                        };
+                    }
+                    
+                    let html = `
+                        <div class="p-3">
+                            <div class="alert alert-success mb-3">
+                                <div class="d-flex align-items-center">
+                                    <i class="bi bi-trophy-fill me-2"></i>
+                                    <div>
+                                        <strong>Top performer: ${topCashier.name}</strong>
+                                        <div class="small">${topCashier.ordersHandled} orders handled today</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <h6 class="mb-3">Cashiers Handling Orders</h6>
+                            <div class="list-group mb-3" style="max-height: 300px; overflow-y: auto;">
+                    `;
+                    
+                    if (cashiers.length === 0) {
+                        html += `
+                            <div class="list-group-item text-center">
+                                No cashiers are currently handling orders
+                            </div>
+                        `;
+                    } else {
+                        for (const cashier of cashiers) {
+                            const statusClass = cashier.status === 'Active' ? 'success' : 'warning';
+                            
+                            html += `
+                                <div class="list-group-item">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <strong>${cashier.name}</strong>
+                                            <div class="small text-muted">Cashier</div>
+                                        </div>
+                                        <div class="text-end">
+                                            <span class="badge bg-${statusClass}">${cashier.status}</span>
+                                            <div class="small text-muted">Orders handled today: ${cashier.ordersHandled}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        }
+                    }
+                    
+                    html += `
+                            </div>
+                            
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <strong>Total cashiers on duty:</strong> ${cashiers.length}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    container.innerHTML = html;
+                })
+                .catch(error => {
+                    console.error('Error loading staff activity:', error);
+                    
+                    // Check if container still exists
+                    if (!container) {
+                        console.warn('Staff activity container no longer exists');
+                        return;
+                    }
+                    
+                    container.innerHTML = `
+                        <div class="p-3">
+                            <div class="alert alert-danger">
+                                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                                Failed to load staff activity. Please try refreshing the page.
+                            </div>
+                        </div>
+                    `;
+                });
+        }
+
+        // Add decryption function for usernames
+        function decryptUsername(cipherText) {
+            if (!cipherText || cipherText === 'Walk-in' || cipherText === 'Anonymous') return cipherText;
+            
+            try {
+                let result = "";
+                
+                // Get the shift value from the server (set in the page initialization)
+                // The shift value is provided by the encryption service via the page model
+                const shiftValue = window.caesarShiftValue || 7;
+                
+                // Apply reverse Caesar cipher shift to each character
+                for (let i = 0; i < cipherText.length; i++) {
+                    const c = cipherText.charAt(i);
+                    
+                    // Only decrypt letters (both uppercase and lowercase)
+                    if (/[a-zA-Z]/.test(c)) {
+                        const baseChar = /[A-Z]/.test(c) ? 'A'.charCodeAt(0) : 'a'.charCodeAt(0);
+                        // Apply reverse shift with wrap-around within the alphabet (mod 26)
+                        // Add 26 before modulo to handle negative numbers
+                        const decryptedCharCode = ((c.charCodeAt(0) - baseChar - shiftValue + 26) % 26) + baseChar;
+                        result += String.fromCharCode(decryptedCharCode);
+                    } else {
+                        // Non-letter characters remain unchanged
+                        result += c;
+                    }
+                }
+                
+                console.log(`Decrypted "${cipherText}" to "${result}" using shift value ${shiftValue}`);
+                return result;
+            } catch (error) {
+                console.error('Error decrypting username:', error);
+                return cipherText; // Return encrypted text on error
+            }
+        }
+        
+        // Helper functions for decryption
+        function isValidBase64(str) {
+            try {
+                return btoa(atob(str)) === str;
+            } catch (err) {
+                return false;
+            }
+        }
+
+        // Function to load recent orders
+        function loadRecentOrders(container) {
+            // Check if container exists
+            if (!container) {
+                console.warn('Recent orders container not found');
+                return;
+            }
+            
+            // Show loading indicator
+            container.innerHTML = `
+                <div class="d-flex justify-content-center p-3">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            `;
+            
+            // Fetch recent orders from API
+            fetch('/api/orders/recent')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch recent orders');
+                    }
+                    return response.json();
+                })
+                .then(orders => {
+                    // Check if container still exists
+                    if (!container) {
+                        console.warn('Recent orders container no longer exists');
+                        return;
+                    }
+                    
+                    let html = `
+                        <div class="p-3" style="height: calc(100% - 20px); display: flex; flex-direction: column;">
+                            <div class="alert alert-info mb-3">
+                                <div class="d-flex align-items-center">
+                                    <i class="bi bi-bell-fill me-2"></i>
+                                    <div>
+                                        <strong>${orders.filter(o => o.status === 'New').length} new orders</strong>
+                                        <div class="small">Need assignment</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="table-responsive flex-grow-1" style="min-height: 200px; max-height: calc(100% - 120px); overflow-y: auto; border-radius: 4px; border: 1px solid #dee2e6;">
+                                <table class="table table-hover table-striped mb-0">
+                                    <thead class="sticky-top bg-light">
+                                        <tr>
+                                            <th>Order #</th>
+                                            <th>Customer</th>
+                                            <th>Items</th>
+                                            <th>Total</th>
+                                            <th>Time</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                    `;
+                    
+                    if (orders.length === 0) {
+                        html += `
+                            <tr>
+                                <td colspan="6" class="text-center">No recent orders found</td>
+                            </tr>
+                        `;
+                    } else {
+                        for (const order of orders) {
+                            let statusClass = '';
+                            switch (order.status) {
+                                case 'New': statusClass = 'bg-primary'; break;
+                                case 'Processing': statusClass = 'bg-warning'; break;
+                                case 'Ready': statusClass = 'bg-success'; break;
+                                case 'Complete': statusClass = 'bg-secondary'; break;
+                                default: statusClass = 'bg-info';
+                            }
+                            
+                            // Ensure customerName is decrypted (though the server typically handles this)
+                            const customerName = decryptUsername(order.customerName);
+                            
+                            html += `
+                                <tr>
+                                    <td><strong>#${order.id}</strong></td>
+                                    <td>${customerName}</td>
+                                    <td>${order.itemCount}</td>
+                                    <td>${order.total}</td>
+                                    <td><small>${order.timeAgo}</small></td>
+                                    <td><span class="badge ${statusClass}">${order.status}</span></td>
+                                </tr>
+                            `;
+                        }
+                    }
+                    
+                    html += `
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            <div class="text-end mt-3">
+                                <button class="btn btn-sm btn-primary" onclick="refreshRecentOrders()">
+                                    <i class="bi bi-arrow-clockwise"></i> Refresh Orders
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    
+                    container.innerHTML = html;
+                })
+                .catch(error => {
+                    console.error('Error loading recent orders:', error);
+                    
+                    // Check if container still exists
+                    if (!container) {
+                        console.warn('Recent orders container no longer exists');
+                        return;
+                    }
+                    
+                    container.innerHTML = `
+                        <div class="p-3">
+                            <div class="alert alert-danger">
+                                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                                Failed to load recent orders. Please try refreshing the page.
+                            </div>
+                            <div class="text-center mt-2">
+                                <button class="btn btn-primary" onclick="refreshRecentOrders()">
+                                    <i class="bi bi-arrow-clockwise"></i> Try Again
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                });
+        }
+
+        // Function to refresh recent orders
+        function refreshRecentOrders() {
+            const container = document.getElementById('recent-orders-content');
+            if (container) {
+                loadRecentOrders(container);
+            }
+        }
+
+        // Function to load inventory alerts
+        function loadInventoryAlerts(container) {
+            // Check if container exists
+            if (!container) {
+                console.warn('Inventory alerts container not found');
+                return;
+            }
+            
+            // Show loading indicator
+            container.innerHTML = `
+                <div class="d-flex justify-content-center p-3">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            `;
+            
+            // Fetch low stock items from API
+            fetch('/api/stocks/lowstock')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to load low stock items');
+                    }
+                    return response.json();
+                })
+                .then(lowStockItems => {
+                    // Check if container still exists
+                    if (!container) {
+                        console.warn('Inventory alerts container no longer exists');
+                        return;
+                    }
+                    
+                    let html = `
+                        <div class="p-3">
+                            <div class="alert alert-warning mb-3">
+                                <div class="d-flex align-items-center">
+                                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                                    <div>
+                                        <strong>${lowStockItems.length} items low on stock</strong>
+                                        <div class="small">Items below reorder threshold</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <h6 class="mb-3">Low Stock Items</h6>
+                            <div class="list-group mb-3" style="max-height: 200px; overflow-y: auto;">
+                    `;
+                    
+                    // Add low stock items to the list
+                    if (lowStockItems.length === 0) {
+                        html += `
+                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                                <div class="text-success">
+                                    <i class="bi bi-check-circle me-2"></i>
+                                    All product stock levels are healthy
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        for (const item of lowStockItems) {
+                            const stockStatus = item.quantity <= 0 ? 'bg-danger' : 'bg-warning';
+                            const stockText = item.quantity <= 0 ? 'Out of Stock' : 'Low Stock';
+                            
+                            html += `
+                                <div class="list-group-item d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <strong>${item.productName}</strong>
+                                        <div class="small text-muted">Only ${item.quantity} ${item.unitType} left (Min: ${item.thresholdLevel})</div>
+                                    </div>
+                                    <span class="badge ${stockStatus}">${stockText}</span>
+                                </div>
+                            `;
+                        }
+                    }
+                    
+                    html += `
+                            </div>
+                            
+                        </div>
+                    `;
+                    
+                    container.innerHTML = html;
+                })
+                .catch(error => {
+                    console.error('Error loading inventory alerts:', error);
+                    
+                    // Check if container still exists
+                    if (!container) {
+                        console.warn('Inventory alerts container no longer exists');
+                        return;
+                    }
+                    
+                    container.innerHTML = `
+                        <div class="p-3">
+                            <div class="alert alert-danger">
+                                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                                Failed to load inventory alerts. Please try refreshing the page.
+                            </div>
+                        </div>
+                    `;
+                });
+        }
+    </script>
+} 
